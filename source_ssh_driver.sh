@@ -30,3 +30,5 @@ echo $CMAKE_PREFIX_PATH
 
 #Servo pkg
 source /opt/aws/deepracer/lib/servo_pkg/share/servo_pkg/local_setup.bash
+#Camera pkg
+source /opt/aws/deepracer/lib/camera_pkg/share/camera_pkg/local_setup.bash

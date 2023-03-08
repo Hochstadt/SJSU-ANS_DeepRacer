@@ -15,7 +15,7 @@ Unsure why this is a thing, but ROS says to do so.
 
 3. Then you can launch the ssh_driver with the following:
 ``` ros2 launch ssh_driver ssh_launcher.launch.py```
-This will start the servo node and the ssh_driver node that interprets the teleop_twist_keyboard commands and turn them into the commands to the motors and steering. An important thing to remember is that your car won't go anywhere if
+This will start the camera node, the servo node, and the ssh_driver node that interprets the teleop_twist_keyboard commands and turn them into the commands to the motors and steering. An important thing to remember is that your car won't go anywhere if
 the main battery is not turned in.
 
 4. From the computer you want to control things, as sudo, re-source the appropriate
@@ -25,6 +25,11 @@ keyboard:
 
 Then using this interface you can run the keyboard. Note, when working with multiple machines, the multicast tool came in handy and this thread did as well:
 https://github.com/aws-deepracer/aws-deepracer-interfaces-pkg
+
+5. Also in another terminal you can start the web_video_server. This is not by default installed on foxy ROS distribution, so if you don't have it you
+  want to clone this branch of web_video_server, https://github.com/RobotWebTools/web_video_server/tree/ros2. Once you do that go into the cloned folder
+and run colcon build. This should work. Then you can source the setup.bash that's in the install folder to get the web video server going. ONce you have that
+you can connect using the instructions here (through a web browsesr) http://wiki.ros.org/web_video_server
 
 
 

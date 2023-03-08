@@ -19,6 +19,12 @@ def generate_launch_description():
             package='ssh_driver',
             executable='ssh_driver'),
         Node(
+            package='camera_pkg',
+            namespace='camera_pkg',
+            executable='camera_node',
+            name='camera_node'
+        ),
+        Node(
             package='servo_pkg',
             namespace='servo_pkg',
             executable='servo_node',
