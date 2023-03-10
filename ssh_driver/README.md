@@ -37,7 +37,7 @@ you can connect using the instructions here (through a web browsesr) http://wiki
 
 
 
-
+http://localhost:8080/stream?topic=/camera_pkg/display_mjpeg&type=ros_compressed&width=320&height=240&quality=10
 
 
 
