@@ -37,8 +37,9 @@ then
   #Go build the thing
   cd $INF_PATH && colcon build --packages-select deepracer_interfaces_pkg 
 fi
-source $INF_PATH/install/setup.bash
+source $INF_PATH/install/local_setup.bash
 export CMAKE_PREFIX_PATH="$INF_PATH/install"
+cd $CUR_PATH
 
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
@@ -57,6 +58,7 @@ then
   AWS_PATH="/opt/aws/deepracer/lib"
   SSH_DRIVER_PATH="$CUR_DIR/ssh_driver"
   
+  cd $DEP_PATH
   ## Camera
   if [ ! -d "$CAM_PATH/build" ]
   then
@@ -76,7 +78,7 @@ then
   source $CAM_PATH/install/setup.bash
 
   #Any other car specific dependencies reuiqred here
-
+  cd $DEP_PATH
 
   ##IF on car we can take advantage of the AWS installation, These are not the
   #full blown source code, just the header files and compiled binaries
@@ -111,6 +113,7 @@ then
 
   #Web video server
   #foxy ros does not have web_video_server this is required...
+  cd $DEP_PATH
   if [ ! -d $WVS_PATH ]
   then
     git clone -b ros2 git@github.com:RobotWebTools/web_video_server.git
@@ -123,9 +126,10 @@ then
   else
     echo "Web_video_server package already exists and is built"
   fi
-  source $WVS_PATH/install/setup.bash
+  source $WVS_PATH/install/local_setup.bash
 
   #ssh_controller
+  cd $CUR_PATH
   if [ ! -d "$SSH_CONTROLLER_PATH/build" ]
   then
     echo "building ssh_controller"
@@ -133,7 +137,7 @@ then
   else
     echo "ssh_controller already built"
   fi
-  source $SSH_CONTROLLER_PATH/install/setup.bash
+  source $SSH_CONTROLLER_PATH/install/local_setup.bash
   
 else
   echo "'$1' is not an understood argument, try one of the following"
