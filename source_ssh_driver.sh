@@ -22,8 +22,6 @@ printenv | grep ROS
 #source code to actually depend on them, you'll want to add things to this
 #as you need them
 export CMAKE_PREFIX_PATH=/root/deepracer_ws/aws-deepracer-interfaces-pkg/install
-#Additinally need to source this:
-source /root/deepracer_ws/aws-deepracer-interfaces-pkg/install/setup.bash
 echo $CMAKE_PREFIX_PATH
 
 
@@ -31,4 +29,7 @@ echo $CMAKE_PREFIX_PATH
 #Servo pkg
 source /opt/aws/deepracer/lib/servo_pkg/share/servo_pkg/local_setup.bash
 #Camera pkg
-source /opt/aws/deepracer/lib/camera_pkg/share/camera_pkg/local_setup.bash
+#source /opt/aws/deepracer/lib/camera_pkg/share/camera_pkg/local_setup.bash
+source /root/deepracer_ws/aws-deepracer-camera-pkg/install/setup.bash
+#Interface pkg
+source /root/deepracer_ws/aws-deepracer-interfaces-pkg/install/setup.bash
