@@ -35,18 +35,18 @@ you need to have sudo access. Open up a fresh new terminal and run the following
 
 ```>>sudo su```
 
-4. Go to the directory where SJSU-ANS_DeepRacer is and re-run the sourceme script:
+4. Go to the directory, SJSU-ANS_DeepRacer, and re-run the sourceme script:
 
 ```source setup/sourceme.sh host```
 
 This will setup the proper environment variables. All the building should already
-be done. With sudo access, git clones git funky based on how you have your ssh
+be done. With sudo access, git clones get funky based on how you have your ssh
 tokens set-up so this is the simplest way to do things. (Build as non-sudo, run
 as sudo).
 
 5. Launch the ssh_controller
 
-```launch ssh_controller ssh_controller.launch.py```
+```ros2 launch ssh_controller ssh_controller.launch.py```
 
 6. This will launch a variety of nodes, the first thing you'll notice is
 an X-term window where you can actually controller the deepracer. The commands
