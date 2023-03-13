@@ -101,6 +101,8 @@ are
 - 'j' = left
 - 'l' = right
 - 'k' = stop
+- 'q' = increase speed
+- 'z' = decrease speed
 
 Each press of the key above will increment the designated motion by .01 (on a scale
 where 1 is max and -1 is max in backwards). So to turn more left you may hit the
