@@ -27,16 +27,6 @@ class SshDriver : public rclcpp::Node
             qos.best_effort();
                                               //<deepracer_interfaces_pkg::msg::ServoCtrlMsg>
 	    mServoPub = this->create_publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>("/ctrl_pkg/servo_msg", qos);
-	    /* 2/18: Come back to finish this spot. Right now I have done the following:
-	     * 1) ssh_driver launcher script now launches all needed nodes
-	     * 2) X windows forwarding for access through ssh (see the README note section for more details)
-	     * 3) ssh source script to source the relevant things
-	     * when you luanch (from sudo) the ssh_launch script this should do everything
-	     * correctly. And to test the LED light on the car will come on and off
-	     * as the servoGPIO is enabled/dispabled
-	     * Next: the throttle and steering and subscribions of the servo node, so replicated
-	     * what the ctrl node does with it's publishing and integrate it into thie lofic below
-	     */
 
 
         }
@@ -50,12 +40,6 @@ class SshDriver : public rclcpp::Node
             RCLCPP_INFO(this->get_logger(), "Angular: <%.2f, %.2f, %.2f>", 
                 msg->angular.x, msg->angular.y, msg->angular.z);
             
-            //IDea: split the if statements one for forward/backward based on 
-            //the sign of the linear.x value.
-            //Then the speed is just similar to what we have but whether that
-            //absolute value increases or moves toward zero.
-
-
             if(0.0 == abs(msg->linear.x) + abs(msg->linear.y) + abs(msg->linear.z) + 
               abs(msg->angular.x) + abs(msg->angular.y) + abs(msg->angular.z)) {
               mThrottle = 0;
@@ -71,8 +55,15 @@ class SshDriver : public rclcpp::Node
                 RCLCPP_INFO(this->get_logger(), "Forward, throttle = %.2f", mThrottle);
               } else if(msg->linear.x > 0 && mThrottle > 0){
                 //If the directionality is positive, but the throttle is also positive
-                //we just need to increment the throttle
-                mThrottle+=THROTTLE_STEP;
+                //we just need to increment/decrement the throttle
+                if(msg->linear.x > prev_x)
+                {
+                  //throttle goes up if values increase
+                  mThrottle+=THROTTLE_STEP;
+                } else {
+                  mThrottle-=THROTTLE_STEP;
+                }
+                
                 //check lmits against top
                 mThrottle = std::min(float(mThrottle), float(THROTTLE_MAX));
                 RCLCPP_INFO(this->get_logger(), "increasing throttle to %.2f", mThrottle);
@@ -85,7 +76,14 @@ class SshDriver : public rclcpp::Node
               } else if(msg->linear.x < 0 && mThrottle < 0) {
                 //Directionality is negative, and the throttle is still negative
                 //decrease the throttle
-                mThrottle-=THROTTLE_STEP;
+
+                if(msg->linear.x < prev_x)
+                {
+                  //If it gets more negative make throttle closer to -1
+                  mThrottle-=THROTTLE_STEP;
+                } else {
+                  mThrottle+=THROTTLE_STEP;
+                }
                 //check limits
                 mThrottle = std::max(float(mThrottle), float(-1.0*THROTTLE_MAX));
                 RCLCPP_INFO(this->get_logger(), "decreasing throttle to %.2f", mThrottle);
@@ -93,6 +91,7 @@ class SshDriver : public rclcpp::Node
                 RCLCPP_INFO(this->get_logger(), "Unknown case, throttle is %.2f", mThrottle);
               }
             }
+            prev_x = msg->linear.x;
 	     
             if(adjustSettings()) {
                 RCLCPP_INFO(this->get_logger(), "Message sent correctly");
