@@ -56,7 +56,7 @@ then
   #Relevant paths
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg"
   AWS_PATH="/opt/aws/deepracer/lib"
-  SSH_DRIVER_PATH="$CUR_DIR/ssh_driver"
+  SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   
   cd $DEP_PATH
   ## Camera
@@ -75,7 +75,7 @@ then
   else
     echo "Camera package already exists and is built"
   fi
-  source $CAM_PATH/install/setup.bash
+  source $CAM_PATH/install/local_setup.bash
 
   #Any other car specific dependencies reuiqred here
   cd $DEP_PATH
@@ -94,11 +94,15 @@ then
   fi
 
   #Go build the ssh_driver
+  cd $CUR_PATH
   if [ $bError != 1 ]
   then
-    echo "Building and sourcing the ssh_driver package"
-    cd $SSH_DRIVER_PATH && colcon build
-    source $SSH_DRIVER_PATH/install/setup.bash
+    if [ ! -d $SSH_DRIVER_PATH/build ]
+    then
+        echo "Building ssh_driver package"
+        cd $SSH_DRIVER_PATH && colcon build
+    fi
+    source $SSH_DRIVER_PATH/install/local_setup.bash
   fi
     
 elif [ $1 = "host" ]

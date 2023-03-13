@@ -49,30 +49,49 @@ class SshDriver : public rclcpp::Node
                 msg->linear.x, msg->linear.y, msg->linear.z );
             RCLCPP_INFO(this->get_logger(), "Angular: <%.2f, %.2f, %.2f>", 
                 msg->angular.x, msg->angular.y, msg->angular.z);
+            
+            //IDea: split the if statements one for forward/backward based on 
+            //the sign of the linear.x value.
+            //Then the speed is just similar to what we have but whether that
+            //absolute value increases or moves toward zero.
 
-            if(msg->linear.x > 0){
+
+            if(0.0 == abs(msg->linear.x) + abs(msg->linear.y) + abs(msg->linear.z) + 
+              abs(msg->angular.x) + abs(msg->angular.y) + abs(msg->angular.z)) {
+              mThrottle = 0;
+              bStop = true;
+              RCLCPP_INFO(this->get_logger(), "Stopping");
+            } else {
+              //Check back/forward
+              if(msg->linear.x > 0 && mThrottle <= 0)
+              {
                 bStop = false;
-                mThrottle+=.1;
-		mThrottle = std::min(float(mThrottle), float(1.0));
-                RCLCPP_INFO(this->get_logger(), "Setting throttle to %.2f", mThrottle);
-            } else if(msg->linear.x < 0){
+                //reset throttle if going from backward to forward
+                mThrottle = THROTTLE_MIN;
+                RCLCPP_INFO(this->get_logger(), "Forward, throttle = %.2f", mThrottle);
+              } else if(msg->linear.x > 0 && mThrottle > 0){
+                //If the directionality is positive, but the throttle is also positive
+                //we just need to increment the throttle
+                mThrottle+=THROTTLE_STEP;
+                //check lmits against top
+                mThrottle = std::min(float(mThrottle), float(THROTTLE_MAX));
+                RCLCPP_INFO(this->get_logger(), "increasing throttle to %.2f", mThrottle);
+              } else if(msg->linear.x < 0 && mThrottle >=0)
+              {
                 bStop = false;
-                mThrottle+=-.1;
-		mThrottle = std::max(float(mThrottle), float(-1.0));
-                RCLCPP_INFO(this->get_logger(), "Setting throttle to %.2f", mThrottle);
-            } else if(msg->angular.z < 0){
-		mSteering +=-.3;
-		mSteering = std::max(float(mSteering), float(-1.0));
-		RCLCPP_INFO(this->get_logger(), "Turning left, steering: %.2f", mSteering);
-            } else if(msg->angular.z > 0){
-		mSteering+=.3;
-		mSteering = std::min(float(mSteering), float(1.0));
-		RCLCPP_INFO(this->get_logger(), "Turning right, steering: %.2f", mSteering);
-            } else if(0.0 == abs(msg->linear.x) + abs(msg->linear.y) + abs(msg->linear.z) + 
-                abs(msg->angular.x) + abs(msg->angular.y) + abs(msg->angular.z)) {
-		mThrottle = 0;
-                bStop = true;
-                RCLCPP_INFO(this->get_logger(), "Stopping");
+                //reset throttle if going from forward to backward (or stop to back)
+                mThrottle = -1.0*THROTTLE_MIN;
+                RCLCPP_INFO(this->get_logger(), "Backward, throttle = %.2f", mThrottle);
+              } else if(msg->linear.x < 0 && mThrottle < 0) {
+                //Directionality is negative, and the throttle is still negative
+                //decrease the throttle
+                mThrottle-=THROTTLE_STEP;
+                //check limits
+                mThrottle = std::max(float(mThrottle), float(-1.0*THROTTLE_MAX));
+                RCLCPP_INFO(this->get_logger(), "decreasing throttle to %.2f", mThrottle);
+              } else {
+                RCLCPP_INFO(this->get_logger(), "Unknown case, throttle is %.2f", mThrottle);
+              }
             }
 	     
             if(adjustSettings()) {
@@ -147,8 +166,15 @@ class SshDriver : public rclcpp::Node
         rclcpp::Publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>::SharedPtr mServoPub;
 	bool bStop = true;
 	bool bServoGPIOOn = false;
-	float mThrottle = .5; //start at 50%
+	float mThrottle = 0.0; //start at 50%
 	float mSteering = 0;
+        float prev_x = 0.5;//artifact of teleop_twist_keyboard
+
+
+        //Constant values
+        const float THROTTLE_STEP = .01;
+        const float THROTTLE_MIN = .7;
+        const float THROTTLE_MAX = 1;
 };
 
 int main(int argc, char ** argv) {
