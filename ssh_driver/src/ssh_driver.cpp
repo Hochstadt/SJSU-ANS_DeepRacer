@@ -10,6 +10,12 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
+
+namespace keyboard
+{
+    enum Directions {up = 0, down = 1, right = 2, left = 3, unk=-1};
+}
+
 class SshDriver : public rclcpp::Node
 {
     public:
@@ -46,84 +52,153 @@ class SshDriver : public rclcpp::Node
             float lin_x = float(msg->linear.x);
             float lin_y = float(msg->linear.y);
             float lin_z = float(msg->linear.z);
-            
+            //lower case k puts this in stop mode 
             if(0.0 == abs(lin_x) + abs(lin_y) + abs(lin_z) + 
               abs(ang_x) + abs(ang_y) + abs(ang_z)) {
-              mThrottle = 0;
-              mSteering = 0;
               bStop = true;
-              RCLCPP_INFO(this->get_logger(), "Stopping");
-            } else {
+              bReverse = false;
+              bDrive = false;
+            } else if(lin_z > 0) {
+              bDrive = true;
+              bReverse = false;
               bStop = false;
-              //Check back/forward
-              if(lin_x > 0 && mThrottle <= 0)
-              {
-                //reset throttle if going from backward to forward
-                mThrottle = THROTTLE_MIN;
-                RCLCPP_INFO(this->get_logger(), "Forward, throttle = %.2f", mThrottle);
-              } else if(lin_x > 0 && mThrottle > 0){
-                //If the directionality is positive, but the throttle is also positive
-                //we just need to increment/decrement the throttle
-                if(lin_x > prev_x)
-                {
-                  //throttle goes up if values increase
-                  mThrottle+=THROTTLE_STEP;
-                } else if(lin_x < prev_x) {
-                  mThrottle-=THROTTLE_STEP;
+            } else if(lin_z < 0) {
+              bStop = false;
+              bDrive = false;
+              bReverse = true;
+            } 
+
+            if(bStop){
+                mThrottle = 0; mSteering = 0;
+                RCLCPP_INFO(this->get_logger(), "stopping");
+            } else if(bDrive){
+                RCLCPP_INFO(this->get_logger(), "driving");
+                //Starting conditions:
+                keyboard::Directions throttle_command = evalInput(lin_x, lin_y, lin_z
+                                                        ,ang_x, ang_y, ang_z);
+                if(mThrottle == 0.0) {
+                    //To start need an 'up' arrow so positive throttle
+                    if(throttle_command == keyboard::up) {
+
+                        RCLCPP_INFO(this->get_logger(), "applying iniital throttle");
+                        mThrottle = THROTTLE_MIN;
+                    }
+                } else {
+                     //decide if adding or subtracting from current throttle
+                     switch(throttle_command){
+                         case keyboard::up:
+                             //add
+                             mThrottle+=THROTTLE_STEP;
+                             mThrottle = std::min(mThrottle, THROTTLE_MAX);
+                             RCLCPP_INFO(this->get_logger(), "Increasing Throttle");
+                             break;
+                         case keyboard::down:
+                             //Make decrease faster....
+                             mThrottle-=3*THROTTLE_STEP;
+                             mThrottle = std::max(mThrottle, float(0.0));
+                             RCLCPP_INFO(this->get_logger(), "Decreasing Throttle");
+                             break;
+                         default:
+                             break;
+                     } 
+                } 
+            } else if(bReverse){
+                RCLCPP_INFO(this->get_logger(), "reversing");
+                keyboard::Directions throttle_command = evalInput(lin_x, lin_y, lin_z, 
+                                                                ang_x, ang_y, ang_z);
+                if(mThrottle == 0.0) {
+                    //To start need down arrow to get positive throttle
+                    if(throttle_command == keyboard::down) {
+                        RCLCPP_INFO(this->get_logger(), "Applying initial reverese");
+                        mThrottle = THROTTLE_MIN;
+                    } 
+                } else {
+                    switch(throttle_command){
+                        case keyboard::down:
+                            //down positively increases throttle for reverse
+                            mThrottle+=THROTTLE_STEP;
+                            mThrottle = std::min(mThrottle, THROTTLE_MAX);
+                            RCLCPP_INFO(this->get_logger(), "Increasing Reverse Throttle");
+                            break;
+                        case keyboard::up:
+                            mThrottle-=3*THROTTLE_STEP;
+                            mThrottle = std::max(mThrottle, float(0.0));
+                            RCLCPP_INFO(this->get_logger(), "Decreasing Reverse Throttle");
+                            break;
+                        default:
+                            break;
+                    
+                    }
+                } 
+            }                
+
+            //Steering
+            if(bDrive || bReverse){
+                //check if received a steering command
+                keyboard::Directions steering_command = evalInput(lin_x, lin_y, lin_z, ang_x, ang_y, ang_z);
+                switch(steering_command) {
+                    case keyboard::right:
+                        //go right 
+                        mSteering-=STEERING_STEP;
+                        mSteering = std::max(mSteering, float(-1.0*STEERING_MAX));
+                        RCLCPP_INFO(this->get_logger(), "Veering right");
+                        break;
+                    case keyboard::left:
+                        //go left 
+                        mSteering+=STEERING_STEP;
+                        mSteering = std::min(mSteering, float(STEERING_MAX));
+                        RCLCPP_INFO(this->get_logger(), "Veering left");
+                        break;
+                    default:
+                        break;
                 } 
                 
-                //check lmits against top
-                mThrottle = std::min(float(mThrottle), float(THROTTLE_MAX));
-                RCLCPP_INFO(this->get_logger(), "increasing throttle to %.2f", mThrottle);
-              } else if(lin_x < 0 && mThrottle >=0)
-              {
-                //reset throttle if going from forward to backward (or stop to back)
-                mThrottle = -1.0*THROTTLE_MIN;
-                RCLCPP_INFO(this->get_logger(), "Backward, throttle = %.2f", mThrottle);
-              } else if(lin_x < 0 && mThrottle < 0) {
-                //Directionality is negative, and the throttle is still negative
-                //decrease the throttle
 
-                if(lin_x < prev_x)
-                {
-                  //If it gets more negative make throttle closer to -1
-                  mThrottle-=THROTTLE_STEP;
-                } else if(lin_x > prev_x){
-                  mThrottle+=THROTTLE_STEP;
-                }
-                //check limits
-                mThrottle = std::max(float(mThrottle), float(-1.0*THROTTLE_MAX));
-                RCLCPP_INFO(this->get_logger(), "decreasing throttle to %.2f", mThrottle);
-              } else if(ang_z < 0 ){
-                mSteering-=STEERING_MIN;
-                mSteering = std::max(float(mSteering), float(-1.0));
-                RCLCPP_INFO(this->get_logger(), "Turning left, steering: %.2f", mSteering);
-              } else if(ang_z > 0) {
-                mSteering+=STEERING_MIN;
-                mSteering = std::min(float(mSteering), float(1.0));
-                RCLCPP_INFO(this->get_logger(), "Turning right, steering: %.2f", mSteering);
-              } else {
-                RCLCPP_INFO(this->get_logger(), "Unknown case, throttle is %.2f", mThrottle);
-              }
+                
             }
+        
 
-            RCLCPP_INFO(this->get_logger(), "Previous x was: %.2f", prev_x);
-            prev_x = lin_x;
-            RCLCPP_INFO(this->get_logger(), "Previous x is: %.2f", prev_x);
-            RCLCPP_INFO(this->get_logger(), "Previous z was: %.2f", prev_z);
-            prev_z = ang_z;
-	    RCLCPP_INFO(this->get_logger(), "Previous z is: %.2f", prev_z);
+
+            RCLCPP_INFO(this->get_logger(), "Throttle %.2f", mThrottle);
+            RCLCPP_INFO(this->get_logger(), "Steering %.2f", mSteering);
 
             if(adjustSettings()) {
                 RCLCPP_INFO(this->get_logger(), "Message sent correctly");
 		auto servoMsg = deepracer_interfaces_pkg::msg::ServoCtrlMsg();
                 servoMsg.angle = mSteering;
-                servoMsg.throttle = mThrottle;
+                if(bReverse){
+                    servoMsg.throttle = -1.0*mThrottle;
+                } else {
+                    servoMsg.throttle = mThrottle;
+                }
 		mServoPub->publish(servoMsg);                                 	
             }
         }
 
+        keyboard::Directions evalInput(const float & lin_x, const float & lin_y, const float & lin_z, 
+            const float & ang_x, const float & ang_y, const float & ang_z)
+        {
+            //This will check for certain conditions: (should turn into enum)
+            if(lin_x > 0.0 && lin_y == 0.0 && lin_z == 0.0 && ang_x == 0.0 && ang_y == 0.0 && ang_z == 0.0){
+                //up arrow
+                return keyboard::up;
+            } else if(lin_x < 0.0 && lin_y == 0.0 && lin_z == 0.0 
+                && ang_x == 0.0 && ang_y == 0.0 && ang_z == 0.0){
+                //down arrow
+                return keyboard::down; 
+            } else if(lin_x == 0.0 && lin_y == 0.0 && lin_z == 0.0
+                && ang_x == 0.0 && ang_y == 0.0 && ang_z < 0.0){
+                //right arrow
+                return keyboard::right; 
+            } else if(lin_x == 0.0 && lin_y == 0.0 && lin_z == 0.0
+                && ang_x == 0.0 && ang_y == 0.0 && ang_z > 0.0){
+                //left arrow
+                return keyboard::left;
+            }
 
+            return keyboard::unk;
+
+        }
         bool adjustSettings() 
         {
             RCLCPP_INFO(this->get_logger(), "Adjusting Settings");
@@ -184,7 +259,12 @@ class SshDriver : public rclcpp::Node
 	rclcpp::Client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>::SharedPtr mServoGPIOClient;
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr mSubscription;
         rclcpp::Publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>::SharedPtr mServoPub;
+
+
+        keyboard::Directions mDirections;
 	bool bStop = true;
+        bool bReverse = false;
+        bool bDrive = false;
 	bool bServoGPIOOn = false;
 	float mThrottle = 0.0; //start at 50%
 	float mSteering = 0;
