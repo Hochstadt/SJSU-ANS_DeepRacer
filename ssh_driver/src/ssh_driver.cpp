@@ -39,60 +39,81 @@ class SshDriver : public rclcpp::Node
                 msg->linear.x, msg->linear.y, msg->linear.z );
             RCLCPP_INFO(this->get_logger(), "Angular: <%.2f, %.2f, %.2f>", 
                 msg->angular.x, msg->angular.y, msg->angular.z);
+            //Convert incoming messages appropriately
+            float ang_x = float(msg->angular.x);
+            float ang_y = float(msg->angular.y);
+            float ang_z = float(msg->angular.z);
+            float lin_x = float(msg->linear.x);
+            float lin_y = float(msg->linear.y);
+            float lin_z = float(msg->linear.z);
             
-            if(0.0 == abs(msg->linear.x) + abs(msg->linear.y) + abs(msg->linear.z) + 
-              abs(msg->angular.x) + abs(msg->angular.y) + abs(msg->angular.z)) {
+            if(0.0 == abs(lin_x) + abs(lin_y) + abs(lin_z) + 
+              abs(ang_x) + abs(ang_y) + abs(ang_z)) {
               mThrottle = 0;
+              mSteering = 0;
               bStop = true;
               RCLCPP_INFO(this->get_logger(), "Stopping");
             } else {
+              bStop = false;
               //Check back/forward
-              if(msg->linear.x > 0 && mThrottle <= 0)
+              if(lin_x > 0 && mThrottle <= 0)
               {
-                bStop = false;
                 //reset throttle if going from backward to forward
                 mThrottle = THROTTLE_MIN;
                 RCLCPP_INFO(this->get_logger(), "Forward, throttle = %.2f", mThrottle);
-              } else if(msg->linear.x > 0 && mThrottle > 0){
+              } else if(lin_x > 0 && mThrottle > 0){
                 //If the directionality is positive, but the throttle is also positive
                 //we just need to increment/decrement the throttle
-                if(msg->linear.x > prev_x)
+                if(lin_x > prev_x)
                 {
                   //throttle goes up if values increase
                   mThrottle+=THROTTLE_STEP;
-                } else {
+                } else if(lin_x < prev_x) {
                   mThrottle-=THROTTLE_STEP;
-                }
+                } 
                 
                 //check lmits against top
                 mThrottle = std::min(float(mThrottle), float(THROTTLE_MAX));
                 RCLCPP_INFO(this->get_logger(), "increasing throttle to %.2f", mThrottle);
-              } else if(msg->linear.x < 0 && mThrottle >=0)
+              } else if(lin_x < 0 && mThrottle >=0)
               {
-                bStop = false;
                 //reset throttle if going from forward to backward (or stop to back)
                 mThrottle = -1.0*THROTTLE_MIN;
                 RCLCPP_INFO(this->get_logger(), "Backward, throttle = %.2f", mThrottle);
-              } else if(msg->linear.x < 0 && mThrottle < 0) {
+              } else if(lin_x < 0 && mThrottle < 0) {
                 //Directionality is negative, and the throttle is still negative
                 //decrease the throttle
 
-                if(msg->linear.x < prev_x)
+                if(lin_x < prev_x)
                 {
                   //If it gets more negative make throttle closer to -1
                   mThrottle-=THROTTLE_STEP;
-                } else {
+                } else if(lin_x > prev_x){
                   mThrottle+=THROTTLE_STEP;
                 }
                 //check limits
                 mThrottle = std::max(float(mThrottle), float(-1.0*THROTTLE_MAX));
                 RCLCPP_INFO(this->get_logger(), "decreasing throttle to %.2f", mThrottle);
+              } else if(ang_z < 0 ){
+                mSteering-=STEERING_MIN;
+                mSteering = std::max(float(mSteering), float(-1.0));
+                RCLCPP_INFO(this->get_logger(), "Turning left, steering: %.2f", mSteering);
+              } else if(ang_z > 0) {
+                mSteering+=STEERING_MIN;
+                mSteering = std::min(float(mSteering), float(1.0));
+                RCLCPP_INFO(this->get_logger(), "Turning right, steering: %.2f", mSteering);
               } else {
                 RCLCPP_INFO(this->get_logger(), "Unknown case, throttle is %.2f", mThrottle);
               }
             }
-            prev_x = msg->linear.x;
-	     
+
+            RCLCPP_INFO(this->get_logger(), "Previous x was: %.2f", prev_x);
+            prev_x = lin_x;
+            RCLCPP_INFO(this->get_logger(), "Previous x is: %.2f", prev_x);
+            RCLCPP_INFO(this->get_logger(), "Previous z was: %.2f", prev_z);
+            prev_z = ang_z;
+	    RCLCPP_INFO(this->get_logger(), "Previous z is: %.2f", prev_z);
+
             if(adjustSettings()) {
                 RCLCPP_INFO(this->get_logger(), "Message sent correctly");
 		auto servoMsg = deepracer_interfaces_pkg::msg::ServoCtrlMsg();
@@ -167,13 +188,17 @@ class SshDriver : public rclcpp::Node
 	bool bServoGPIOOn = false;
 	float mThrottle = 0.0; //start at 50%
 	float mSteering = 0;
-        float prev_x = 0.5;//artifact of teleop_twist_keyboard
+        float prev_x = 0.0;//artifact of teleop_twist_keyboard
+        float prev_z = 0.0;
 
 
         //Constant values
         const float THROTTLE_STEP = .01;
         const float THROTTLE_MIN = .7;
         const float THROTTLE_MAX = 1;
+        const float STEERING_STEP = .3;
+        const float STEERING_MIN = .3;
+        const float STEERING_MAX = 1;
 };
 
 int main(int argc, char ** argv) {
