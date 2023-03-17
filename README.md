@@ -94,19 +94,36 @@ as sudo).
 ```ros2 launch ssh_controller ssh_controller.launch.py```
 
 6. This will launch a variety of nodes, the first thing you'll notice is
-an X-term window where you can actually controller the deepracer. The commands
-are 
-- 'i' = forward
-- ',' = backward
-- 'j' = left
-- 'l' = right
-- 'k' = stop
-- 'q' = increase speed
-- 'z' = decrease speed
+an X-term window where you can actually controller the deepracer. 
 
-Each press of the key above will increment the designated motion by .01 (on a scale
-where 1 is max and -1 is max in backwards). So to turn more left you may hit the
-j button multiple times. 
+To go forward:
+- put the car in 'drive' by pressing 't'. This allows for commands to be registered
+for moving forward
+- to initiate the car motion press the 'i' key
+- to increase the amount of throttle repeatedly press the 'i' key
+- to decrease the amount of throttle repeatedly press the ',' key
+- to go left press the 'j' key, the more times you press the stronger the
+wheels turn
+- to go right press the 'l' key, again the more times you press the stronger
+the wheels turn
+- to stop the car and take it out of 'drive' mode press the 'k' key. THe light
+on the back of the car should also go out
+
+To go backward:
+- put the car in 'reverse' by pressing 'b'. All commands will now be
+registered for moving backwards
+- To initiate reverse motion press the ','
+- The steering is the same, 'j' for left and 'l' for right
+- To increase the amount/speed/throttle of reverse repeatedly press ','
+- To decrease the amount/speed/throttle of reverse repeatedly press 'i'
+- To stop press the 'k' key, this will take it out of reverse 
+
+An important note, in /opt/aws/deepracer there is a calibration.json. The parameters
+underneath motor control the PWM that goes to impact the motor. For my configuration
+I had Max: 1680000,  mid: 1400000, and min: 1260000. The min is more for the forward
+the max is more for the backward and the mid helps the undelying servo controller
+interpolate between the max/mid. The setting listed there work for hard wood, but seem
+to need to be continually re-tuned.
 
 7. To view the camera stream go to the following website on the host-computer:
 http://localhost:8080/stream?topic=/camera_pkg/display_mjpeg&width=320&height=240&quality=50
