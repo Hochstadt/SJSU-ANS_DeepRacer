@@ -11,7 +11,10 @@ def generate_launch_description():
      lidar_scan_acq = Node(
         package='lidar_scan_acq',
         executable='lidar_scan_acq',
-        output='screen'
+        output='screen',
+        parameters=[
+                {'saveData': False}
+            ]
     ) 
     
      return LaunchDescription([
