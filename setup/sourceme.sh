@@ -14,7 +14,7 @@ fi
 
 source /opt/ros/foxy/setup.bash
 export ROS_LOCALHOST_ONLY=0
-export ROS_DOMAIN_ID=23 
+export ROS_DOMAIN_ID=22
 #NO matter what car vs. host cpu we need the following
 ##INterfaces
 if [ ! -d $DEP_PATH ]
@@ -55,11 +55,14 @@ then
   echo "Car build selected."
   #Relevant paths
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg"
+  LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   
   cd $DEP_PATH
-  ## Camera
+
+  # Camera
+  ###########################################################
   if [ ! -d "$CAM_PATH/build" ]
   then
     #Check if already cloned
@@ -77,9 +80,31 @@ then
   fi
   source $CAM_PATH/install/local_setup.bash
 
-  #Any other car specific dependencies reuiqred here
   cd $DEP_PATH
+  
+  # rplidar 
+  #############################################################
+  #Check if built
+  if [ ! -d "$LIDAR_PATH/build" ]
+  then
+    #Check if cloned
+    if [ ! -d $LIDAR_PATH ]
+    then
+      echo "Cloning rplidar package"
+      git clone -b ros2 git@github.com:Slamtec/rplidar_ros.git
+    fi
+    echo "Building rplidar package"
+    cd $LIDAR_PATH && colcon build
+  else
+    echo "Lidar package already exists and is built"
+  fi
+  source $LIDAR_PATH/install/setup.bash
 
+  cd $DEP_PATH
+  #Add additional dependencies here
+
+  #AWS
+  ###########################################################3
   ##IF on car we can take advantage of the AWS installation, These are not the
   #full blown source code, just the header files and compiled binaries
   if [ -d $AWS_PATH ]
@@ -92,8 +117,10 @@ then
     echo "Error: Did not detect AWS installations. Are you are on the correct system (ie. not the host)?" 
     bError=1
   fi
+ 
 
-  #Go build the ssh_driver
+  #ssh_driver pkg
+  ##########################################################
   cd $CUR_PATH
   if [ $bError != 1 ]
   then

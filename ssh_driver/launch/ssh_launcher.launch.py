@@ -28,6 +28,22 @@ def generate_launch_description():
             package='servo_pkg',
             namespace='servo_pkg',
             executable='servo_node',
-            name='servo_node')
+            name='servo_node'
+        ),
+        #Add nodes needed for data collection
+        Node(
+            package='rplidar_ros2',
+            executable='rplidar_scan_publisher',
+            name='rplidar_scan_publisher',
+            parameters=[{
+                'serial_port': '/dev/ttyUSB0',
+                'serial_baudrate': 115200,
+                'frame_id': 'laser',
+                'inverted': False,
+                'angle_compensate': True,
+            }]
+        )
+
+            
    ])
 
