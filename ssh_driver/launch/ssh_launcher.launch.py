@@ -42,12 +42,6 @@ def generate_launch_description():
                 'inverted': False,
                 'angle_compensate': True,
             }]
-        ),
-        Node(
-            package='sensor_fusion_pkg',
-            namespace='sensor_fusion_pkg',
-            executable='sensor_fusion_node',
-            name='sensor_fusion_node'
         )
 
             
