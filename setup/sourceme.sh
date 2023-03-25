@@ -54,7 +54,7 @@ then
   ###########################################################
   echo "Car build selected."
   #Relevant paths
-  CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg"
+  CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
@@ -71,14 +71,12 @@ then
       echo "Cloning deepracer camera package"
       git clone git@github.com:aws-deepracer/aws-deepracer-camera-pkg.git
     fi
-    cd $CAM_PATH && rosws update
-    cd $CAM_PATH && rosdep install -i --from-path . --rosdistro foxy -y
     echo "Building camera package"
     cd $CAM_PATH && colcon build --packages-select camera_pkg
   else
     echo "Camera package already exists and is built"
   fi
-  source $CAM_PATH/install/local_setup.bash
+  source $CAM_PATH/install/setup.bash
 
   cd $DEP_PATH
   
