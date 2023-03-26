@@ -5,6 +5,10 @@ import launch_ros.actions
 from launch_ros.actions import Node
 
 
+
+#CHANGE THIS TO YOUR LOCATION OF THE SAVE DIRECTORY
+save_dir='/media/storage'
+
 def generate_launch_description():
     return launch.LaunchDescription([
         #This is used if you plan to control the robot directly from the
@@ -24,7 +28,7 @@ def generate_launch_description():
             executable='camera_node',
             name='camera_node',
             parameters=[{
-                'resize_images':True
+                'resize_images':False
             }]
                 
         ),
@@ -46,8 +50,13 @@ def generate_launch_description():
                 'inverted': False,
                 'angle_compensate': True,
             }]
+        ),
+        Node(
+            package='data_collector',
+            executable='data_collector',
+            name='data_collector',
+            parameters=[{
+                'save_dir':save_dir}]
         )
-
-            
    ])
 
