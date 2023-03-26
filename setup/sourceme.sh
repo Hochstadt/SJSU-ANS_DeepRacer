@@ -53,12 +53,16 @@ then
   ## CAR
   ###########################################################
   echo "Car build selected."
-  #Relevant paths
+  #Relevant paths for dependencies
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
+  LASER_GEOM_PATH="$DEP_PATH/laser_geometry"
+  COMMON_INF_PATH="$DEP_PATH/common_interfaces"
+
+  #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
-  
+  DATA_COL_PATH="$CUR_PATH/data_collector"
   cd $DEP_PATH
 
   # Camera
@@ -76,7 +80,7 @@ then
   else
     echo "Camera package already exists and is built"
   fi
-  source $CAM_PATH/install/setup.bash
+  source $CAM_PATH/install/local_setup.bash
 
   cd $DEP_PATH
   
@@ -96,8 +100,43 @@ then
   else
     echo "Lidar package already exists and is built"
   fi
-  source $LIDAR_PATH/install/setup.bash
+  source $LIDAR_PATH/install/local_setup.bash
 
+  cd $DEP_PATH
+  # laser_geom
+  ####################################################################
+  #Check if built
+  if [ ! -d "$LASER_GEOM_PATH/build" ]
+  then
+    #Check if cloned
+    if [ ! -d $LASER_GEOM_PATH ]
+    then
+      echo "Cloning laser geometry"
+      git clone -b ros2 git@github.com:ros-perception/laser_geometry.git
+    fi
+    echo "Building laser geometry"
+    cd $LASER_GEOM_PATH && colcon build
+  else
+    echo "Laser geometry package already exists and is built"
+  fi
+  source $LASER_GEOM_PATH/install/local_setup.bash
+  cd $DEP_PATH
+  # common_interfaces
+  ########################################################################3
+  #Check if built
+  if [ ! -d "$COMMON_INF_PATH/build" ]
+  then
+    if [ ! -d $COMMON_INF_PATH ]
+    then
+      echo "Cloning common interfaces"
+      git clone -b foxy git@github.com:ros2/common_interfaces.git
+    fi
+    echo "Building common interfaces this will take ~10 minutes on deepracer"
+    cd $COMMON_INF_PATH && colcon build
+  else
+    echo "Common interfaces packages already exists and is built"
+  fi
+  source $COMMON_INF_PATH/install/local_setup.bash
   cd $DEP_PATH
   #Add additional dependencies here
 
@@ -127,7 +166,20 @@ then
         echo "Building ssh_driver package"
         cd $SSH_DRIVER_PATH && colcon build
     fi
-    source $SSH_DRIVER_PATH/install/local_setup.bash
+    source $SSH_DRIVER_PATH/install/setup.bash
+  fi
+
+  #data_collector
+  ###############################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $DATA_COL_PATH/build ]
+    then
+      echo "Building data collector package"
+      cd $DATA_COL_PATH && colcon build
+    fi
+    source $DATA_COL_PATH/install/setup.bash
   fi
     
 elif [ $1 = "host" ]
@@ -177,10 +229,10 @@ fi
 if [ $bError != 1 ]
 then
   echo "Packages successfult built and installed."
-  echo "CMAKE_PREFIX_PATH: "
-  echo $CMAKE_PREFIX_PATH
-  echo "ROS environment variables: "
-  printenv | grep ROS
+  #echo "CMAKE_PREFIX_PATH: "
+  #echo $CMAKE_PREFIX_PATH
+  #echo "ROS environment variables: "
+  #printenv | grep ROS
 else
   echo "Package building/install failed."
 fi
