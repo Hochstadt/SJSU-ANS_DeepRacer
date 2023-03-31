@@ -18,13 +18,13 @@ def generate_launch_description():
             executable='web_video_server',
         ),
         Node(
-            package='data_storage',
-            executable='data_subscriber',
-        ),
-        Node(
             package='teleop_twist_keyboard',
             executable='teleop_twist_keyboard',
             output='screen',
-            prefix='xterm -e')
+            prefix='xterm -e'),
+        Node(
+            package='rviz_interface',
+            executable='rviz_interface'
+        )
    ])
 

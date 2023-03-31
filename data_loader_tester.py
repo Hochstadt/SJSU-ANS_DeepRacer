@@ -4,7 +4,7 @@ from deepracer_interfaces_pkg.msg import CameraMsg
 from cv_bridge import CvBridge
 import cv2
 
-fname = '/home/taylor/SJSU-ANS_DeepRacer/2023_03_25_13_09_19/13_09_21_418335.pickle'
+fname = '/home/taylor/SJSU-ANS_DeepRacer/2023_03_25_18_45_55/18_47_24_161642.pickle'
 with open(fname, 'rb') as handle:
     mydata = pickle.load(handle)
 

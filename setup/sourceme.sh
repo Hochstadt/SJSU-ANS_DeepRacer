@@ -40,6 +40,48 @@ fi
 source $INF_PATH/install/local_setup.bash
 export CMAKE_PREFIX_PATH="$INF_PATH/install"
 cd $CUR_PATH
+#Additional car & host dependencies
+LASER_GEOM_PATH="$DEP_PATH/laser_geometry"
+COMMON_INF_PATH="$DEP_PATH/common_interfaces"
+cd $DEP_PATH
+# laser_geom
+####################################################################
+#Check if built
+if [ ! -d "$LASER_GEOM_PATH/build" ]
+then
+  #Check if cloned
+  if [ ! -d $LASER_GEOM_PATH ]
+  then
+    echo "Cloning laser geometry"
+    git clone -b ros2 git@github.com:ros-perception/laser_geometry.git
+  fi
+  echo "Building laser geometry"
+  cd $LASER_GEOM_PATH && colcon build
+else
+  echo "Laser geometry package already exists and is built"
+fi
+source $LASER_GEOM_PATH/install/local_setup.bash
+cd $DEP_PATH
+# common_interfaces
+########################################################################3
+#Check if built
+if [ ! -d "$COMMON_INF_PATH/build" ]
+then
+  if [ ! -d $COMMON_INF_PATH ]
+  then
+    echo "Cloning common interfaces"
+    git clone -b foxy git@github.com:ros2/common_interfaces.git
+  fi
+  echo "Building common interfaces this will take ~10 minutes on deepracer"
+  cd $COMMON_INF_PATH && colcon build
+else
+  echo "Common interfaces packages already exists and is built"
+fi
+source $COMMON_INF_PATH/install/local_setup.bash
+
+
+
+
 
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
@@ -57,9 +99,7 @@ then
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
-  LASER_GEOM_PATH="$DEP_PATH/laser_geometry"
-  COMMON_INF_PATH="$DEP_PATH/common_interfaces"
-
+  
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   DATA_COL_PATH="$CUR_PATH/data_collector"
@@ -102,41 +142,7 @@ then
   fi
   source $LIDAR_PATH/install/local_setup.bash
 
-  cd $DEP_PATH
-  # laser_geom
-  ####################################################################
-  #Check if built
-  if [ ! -d "$LASER_GEOM_PATH/build" ]
-  then
-    #Check if cloned
-    if [ ! -d $LASER_GEOM_PATH ]
-    then
-      echo "Cloning laser geometry"
-      git clone -b ros2 git@github.com:ros-perception/laser_geometry.git
-    fi
-    echo "Building laser geometry"
-    cd $LASER_GEOM_PATH && colcon build
-  else
-    echo "Laser geometry package already exists and is built"
-  fi
-  source $LASER_GEOM_PATH/install/local_setup.bash
-  cd $DEP_PATH
-  # common_interfaces
-  ########################################################################3
-  #Check if built
-  if [ ! -d "$COMMON_INF_PATH/build" ]
-  then
-    if [ ! -d $COMMON_INF_PATH ]
-    then
-      echo "Cloning common interfaces"
-      git clone -b foxy git@github.com:ros2/common_interfaces.git
-    fi
-    echo "Building common interfaces this will take ~10 minutes on deepracer"
-    cd $COMMON_INF_PATH && colcon build
-  else
-    echo "Common interfaces packages already exists and is built"
-  fi
-  source $COMMON_INF_PATH/install/local_setup.bash
+  
   cd $DEP_PATH
   #Add additional dependencies here
 
