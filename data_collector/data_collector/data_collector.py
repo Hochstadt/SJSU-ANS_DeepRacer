@@ -110,7 +110,6 @@ class dataCollector(Node):
             c_time = datetime.now()
             duration = c_time - self.lidar_time            
             if duration.total_seconds() > self.SAVE_RATE and self.bCollectData:
-                self.get_logger().info('Saving Data')
                 pc2_msg = self.lp.projectLaser(msg)
                 tstamp = c_time.strftime("%d_%H_%M_%S_%f")
                 fname = tstamp + '_pc2.pickle'
@@ -192,9 +191,8 @@ class dataCollector(Node):
                         except CvBridge.CvBridgeError as e:
                             self.get_logger().error('Cv bridge exception %s' % e)
                             self.bCollectData = False
-                        self.get_logger().info('Streaming img')
                         #Now attempt to actually publish                    
-                        self.publisher_.publish(msg)    
+                        self.streamer.publish(msg)    
                 else:
                     self.get_logger().error('Camera at index 0 not opened')
 
