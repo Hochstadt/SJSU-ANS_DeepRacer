@@ -21,7 +21,7 @@ class dataCollector(Node):
         lp = LaserProjection()
         #SAVE_RATE seconds has passed before new measurement
         SAVE_RATE = 0.5
-        CAMERA_IDX_LIST = [2,1]
+        CAMERA_IDX_LIST = [4,3,2,1,0]
 
         def __init__(self):
             super().__init__('data_collector')
@@ -102,9 +102,8 @@ class dataCollector(Node):
              
             c_time = datetime.now()
             duration = c_time - self.lidar_time            
-            #NOTE: LIDAR SAVE RATE IS GOING TO BE 2x the speedo f camera
             if duration.total_seconds() > self.SAVE_RATE and self.bCollectData:
-                self.get_logger().info('Saving lidar')
+                self.get_logger().info('Saving Data')
                 pc2_msg = self.lp.projectLaser(msg)
                 tstamp = c_time.strftime("%d_%H_%M_%S_%f")
                 fname = tstamp + '_pc2.pickle'
@@ -141,6 +140,7 @@ class dataCollector(Node):
                     else:
                         self.get_logger().error('Camera index %d not open' % i )                
                     i = i + 1
+            self.get_logger().info('Frames found, size: %d' % len(frames))
             return frames
 
         def scanCameraIndex(self, camera_idx_list):

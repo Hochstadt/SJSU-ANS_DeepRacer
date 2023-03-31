@@ -23,14 +23,10 @@ def generate_launch_description():
             package='ssh_driver',
             executable='ssh_driver'),
         Node(
-            package='camera_pkg',
+            package='video_streamer',
             namespace='camera_pkg',
-            executable='camera_node',
-            name='camera_node',
-            parameters=[{
-                'resize_images':False
-            }]
-                
+            executable='video_streamer',
+            name='video_streamer'
         ),
         Node(
             package='servo_pkg',
