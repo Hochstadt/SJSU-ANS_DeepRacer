@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Image
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from deepracer_interfaces_pkg.srv import VideoStateSrv
 from laser_geometry import LaserProjection
@@ -22,6 +23,8 @@ class dataCollector(Node):
         #SAVE_RATE seconds has passed before new measurement
         SAVE_RATE = 0.5
         CAMERA_IDX_LIST = [4,3,2,1,0]
+        DEFAULT_IMAGE_WIDTH = 160
+        DEFAULT_IMAGE_HEIGHT = 120    
 
         def __init__(self):
             super().__init__('data_collector')
@@ -45,20 +48,21 @@ class dataCollector(Node):
             self.video_index_list = []
             self.scanCameraIndex(self.CAMERA_IDX_LIST)
             self.bridge = CvBridge()
+            self.videoWorker = threading.Thread()
 
             self.lidar_subscription = self.create_subscription(
                 LaserScan,
                 'scan',
                 self.lidar_listener_callback,
                 qos_profile=qos_profile)
-            '''
-            self.camera_subscription = self.create_subscription(
-                 CameraMsg,
-                 '/camera_pkg/video_mjpeg',
-                 self.camera_listener_callback,
-                 qos_profile=qos_profile
+            
+            #Now create publisher to JUST stream
+            self.streamer = self.create_publisher(
+                 Image,
+                 'display_mjpeg',
+                 1
             )
-            '''
+
 
             #Create a subsriber that keys off the same message the 
             #cameras do
@@ -89,6 +93,9 @@ class dataCollector(Node):
                     if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FOURCC) == cv.VideoWriter.fourcc(*"MJPG")):
                         self.get_logger().error('Unable to get MJPEG stream: %d' % self.video_index_list[i])
                     i = i + 1
+                self.videoWorker = threading.Thread(target=self.streamFrames, daemon=True)
+                self.videoWorker.start()
+                
                 response.error = 0
             else:
                 self.get_logger().info('NOT Starting data collection')
@@ -170,24 +177,27 @@ class dataCollector(Node):
             else:
                 self.get_logger().error('Error while detecting cameras')
 
+        def streamFrames(self):
+            while self.bCollectData:
+                #Don't need stereo imagery... just the one
+                mono_cap = self.video_capture_list[0]
+                if mono_cap.isOpened():
+                    ret, frame = mono_cap.read()
+                    if not ret:
+                        self.get_logger().error('Camera index 0 did not return frames')
+                    else:
+                        frame = cv.resize(frame, (self.DEFAULT_IMAGE_WIDTH, self.DEFAULT_IMAGE_HEIGHT))
+                        try:
+                            msg = self.bridge.cv2_to_imgmsg(frame, "bgr8")
+                        except CvBridge.CvBridgeError as e:
+                            self.get_logger().error('Cv bridge exception %s' % e)
+                            self.bCollectData = False
+                        self.get_logger().info('Streaming img')
+                        #Now attempt to actually publish                    
+                        self.publisher_.publish(msg)    
+                else:
+                    self.get_logger().error('Camera at index 0 not opened')
 
-'''
-        def camera_listener_callback(self, msg):
-            #Check if enough time has passed
-            c_time = datetime.now()
-            duration = c_time - self.cam_time
-            if duration.total_seconds() > self.SAVE_RATE and self.bCollectData:
-                self.get_logger().info('Saving Camera IMG')
-
-                #Gen filename
-                tstamp  = c_time.strftime("%d_%H_%M_%S_%f")
-                fname = tstamp + '_img.pickle'
-                fname = os.path.join(self.data_dir, fname)
-                with open(fname, 'wb') as handle:
-                    pickle.dump(msg.images, handle)
-                #Reset time
-                self.cam_time = c_time
-'''
 def main(args=None):
     rclpy.init(args=args)
     
