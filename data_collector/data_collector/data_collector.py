@@ -146,7 +146,6 @@ class dataCollector(Node):
                     else:
                         self.get_logger().error('Camera index %d not open' % i )                
                     i = i + 1
-            self.get_logger().info('Frames found, size: %d' % len(frames))
             return frames
 
         def scanCameraIndex(self, camera_idx_list):
