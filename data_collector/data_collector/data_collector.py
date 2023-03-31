@@ -86,14 +86,14 @@ class dataCollector(Node):
             c_time = datetime.now()
             duration = c_time - self.lidar_time            
             #NOTE: LIDAR SAVE RATE IS GOING TO BE 2x the speedo f camera
-            if duration.total_seconds > SAVE_RATE/2.0 and self.bCollectData:
+            if duration.total_seconds() > self.SAVE_RATE/2.0 and self.bCollectData:
                 self.get_logger().info('Saving lidar')
                 pc2_msg = self.lp.projectLaser(msg)
                 tstamp = c_time.strftime("%d_%H_%M_%S_%f")
                 fname = tstamp + '_pc2.pickle'
                 fname = os.path.join(self.data_dir, fname)
                 with open(fname, 'wb') as handle:
-                    pickel.dump(pc2_msg, handle)
+                    pickle.dump(pc2_msg, handle)
                 #reset time
                 self.lidar_time = c_time
                     
@@ -102,7 +102,7 @@ class dataCollector(Node):
             #Check if enough time has passed
             c_time = datetime.now()
             duration = c_time - self.cam_time
-            if duration.total_seconds() > SAVE_RATE and self.bCollectData:
+            if duration.total_seconds() > self.SAVE_RATE and self.bCollectData:
                 self.get_logger().info('Saving Camera IMG')
 
                 #Gen filename
