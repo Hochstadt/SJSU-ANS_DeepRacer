@@ -44,7 +44,6 @@ class rvizInterface(Node):
 
     def lidar_listener_callback(self, msg):
         
-        self.get_logger().info('LIDAR msg received')
         pc2_msg = self.lp.projectLaser(msg)
         #call publisher to publish       
         if self.pub_count == self.PUBLISH_EVERY:
