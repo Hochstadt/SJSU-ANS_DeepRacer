@@ -18,7 +18,7 @@ import cv2 as cv
 import threading
 
 class videoStreamer(Node):
-    CAMERA_IDX_LIST = [4,3,2,1]
+    CAMERA_IDX_LIST = [2,0]
     DEFAULT_IMAGE_WIDTH = 160
     DEFAULT_IMAGE_HEIGHT = 120    
     
@@ -29,7 +29,7 @@ class videoStreamer(Node):
         self.bProduceFrames = False
         self.scanCameraIndex(self.CAMERA_IDX_LIST)
         self.bridge = CvBridge()
-        self.videoWorker = -1
+        self.videoWorker = threading.Thread()
         #Now create publisher to JUST stream
         self.publisher_ = self.create_publisher(
                  Image,
@@ -56,7 +56,7 @@ class videoStreamer(Node):
                 else:
                     #add to valid capture list
                     self.video_capture_list.append(tmp_cap)
-                    self.video_capture_list[-1].set(cv.CAP_PROP_FORCC, cv.VideoWriter.forcc(*"MJPG"))
+                    self.video_capture_list[-1].set(cv.CAP_PROP_FOURCC, cv.VideoWriter.fourcc(*"MJPG"))
                     self.video_index_list.append(camera_id)
         #Do some general display
         list_len = len(self.video_index_list)
@@ -73,15 +73,14 @@ class videoStreamer(Node):
         while self.bProduceFrames:
             #Don't need stereo imagery... just the one
             mono_cap = self.video_capture_list[0]
-            msg = CameraMsg()
             if mono_cap.isOpened():
                 ret, frame = mono_cap.read()
                 if not ret:
                     self.get_logger().error('Camera index 0 did not return frames')
                 else:
-                    frame = cv.resize(frame, self.DEFAULT_IMAGE_WIDTH, self.DEFAULT_IMAGE_HEIGHT)
+                    frame = cv.resize(frame, (self.DEFAULT_IMAGE_WIDTH, self.DEFAULT_IMAGE_HEIGHT))
                     try:
-                        msg.images.append(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
+                        msg = self.bridge.cv2_to_imgmsg(frame, "bgr8")
                     except CvBridge.CvBridgeError as e:
                         self.get_logger().error('Cv bridge exception %s' % e)
                         self.bProduceFrames = False
@@ -93,20 +92,24 @@ class videoStreamer(Node):
     def videoProducerStateHdl(self,request, response):
         self.bProduceFrames = False
         
-        if not (self.videoWorker == -1) or self.videoWorker.is_alive():
+        if self.videoWorker.is_alive():
             #Waits for the thread to finish so we can continue to use
             self.videoWorker.join()
 
         #Check we are collecting from mjpg channel
         i = 0
         for cap in self.video_capture_list:
-            if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FORCC) == cv.VideoWriter.forcc(*"MJPG")):
+            if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FOURCC) == cv.VideoWriter.fourcc(*"MJPG")):
                 self.get_logger().error('Unable to get MJPEG stream: %d' % self.video_index_list[i])
             i = i + 1
         if request.activate_video == 1:
-            self.bProduceFrame = True
+            self.get_logger().info('Creating thread and activating')
+            self.bProduceFrames = True
             self.videoWorker = threading.Thread(target=self.produceFrames, daemon=True)
+            self.videoWorker.start()
+            #self.produceFrames() 
         response.error = 0
+        return response
 
 
 def main(args=None):

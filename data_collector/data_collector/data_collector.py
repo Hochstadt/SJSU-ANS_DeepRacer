@@ -21,7 +21,7 @@ class dataCollector(Node):
         lp = LaserProjection()
         #SAVE_RATE seconds has passed before new measurement
         SAVE_RATE = 0.5
-        CAMERA_IDX_LIST = [4,3,2,1]
+        CAMERA_IDX_LIST = [2,1]
 
         def __init__(self):
             super().__init__('data_collector')
@@ -86,7 +86,7 @@ class dataCollector(Node):
                 #Check we are collecting from mjpg
                 i = 0
                 for cap in self.video_capture_list:
-                    if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FORCC) == cv.VideoWriter.forcc(*"MJPG")):
+                    if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FOURCC) == cv.VideoWriter.fourcc(*"MJPG")):
                         self.get_logger().error('Unable to get MJPEG stream: %d' % self.video_index_list[i])
                     i = i + 1
                 response.error = 0
@@ -157,7 +157,7 @@ class dataCollector(Node):
                     else:
                         #add to valid capture list
                         self.video_capture_list.append(tmp_cap)
-                        self.video_capture_list[-1].set(cv.CAP_PROP_FORCC, cv.VideoWriter.forcc(*"MJPG"))
+                        self.video_capture_list[-1].set(cv.CAP_PROP_FOURCC, cv.VideoWriter.fourcc(*"MJPG"))
                         self.video_index_list.append(camera_id)
             #Do some general display
             list_len = len(self.video_index_list)

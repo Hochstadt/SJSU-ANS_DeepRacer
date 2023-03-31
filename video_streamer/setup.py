@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'video_streamer = video_streamer.video_streamer: main',
+            'video_streamer = video_streamer.video_streamer:main',
         ],
     },
 )
