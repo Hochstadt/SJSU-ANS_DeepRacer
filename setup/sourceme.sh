@@ -195,25 +195,19 @@ then
   ####################################################################
   echo "Host build selected."
   #Paths
-  WVS_PATH="$DEP_PATH/web_video_server"
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
+  RVIZ_INF="$CUR_PATH/rviz_interface"
 
-  #Web video server
-  #foxy ros does not have web_video_server this is required...
-  cd $DEP_PATH
-  if [ ! -d $WVS_PATH ]
+  #Rviz interface
+  cd $CUR_PATH
+  if [ ! -d "$RVIZ_INF/build" ]
   then
-    git clone -b ros2 git@github.com:RobotWebTools/web_video_server.git
-  fi
-  #Check if already built
-  if [ ! -d "$WVS_PATH/build" ]
-  then
-    echo "building web_video_server"
-    cd $WVS_PATH && colcon build
+    echo "building rviz interface"
+    cd $RVIZ_INF && colcon build
   else
-    echo "Web_video_server package already exists and is built"
+    echo "rviz interface already built"
   fi
-  source $WVS_PATH/install/local_setup.bash
+  source $RVIZ_INF/install/local_setup.bash
 
   #ssh_controller
   cd $CUR_PATH
