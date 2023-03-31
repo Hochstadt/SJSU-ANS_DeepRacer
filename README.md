@@ -125,8 +125,7 @@ the max is more for the backward and the mid helps the undelying servo controlle
 interpolate between the max/mid. The setting listed there work for hard wood, but seem
 to need to be continually re-tuned.
 
-7. To view the camera stream go to the following website on the host-computer:
-http://localhost:8080/stream?topic=/camera_pkg/display_mjpeg&width=320&height=240&quality=50
+7. To view the camera stream and lidar stream rviz should have popped up with the ssH_controller node. No web server is required (as it was before)
 
 you can change the width and height in the URL to change the image size. With that said the
 configuration given above gives the most real-time view I could get.
