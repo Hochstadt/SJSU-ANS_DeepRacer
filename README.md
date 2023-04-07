@@ -17,12 +17,8 @@ won't allow you to drive the car very far! My suggestion is to ssh:
 
 1. Once ssh'd to the deepracer clone this repo:
 
-```>>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git```
-
-As of 3/12, need to also be on the ssh_driver branch. So run the following once the clone
-is done:
-
-```>>cd SJSU-ANS_DeepRacer && git checkout ssh_driver```
+```>>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git
+>>cd SJSU-ANS_DeepRacer```
 
 2. Now source the sourceme script with the 'car' argument by running the following script.
 (You should be in the directory named SJSU-ANS_DeepRacer)
@@ -61,12 +57,8 @@ sudo apt-install xterm
 ```
 1. In a fresh new terminal (without any prior environment variables set) clone this repo: 
 
-```>>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git```
-
-As of 3/12, need to also be on the ssh_driver branch. So run the following once the clone
-is done:
-
-```>>cd SJSU-ANS_DeepRacer && git checkout ssh_driver```
+```>>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git
+>>cd SJSU-ANS_DeepRacer && git checkout ssh_driver```
 
 2. Now source the sourceme script with the host argument by running the following script. 
 (You should be in the directory named SJSU-ANS_DeepRacer)
