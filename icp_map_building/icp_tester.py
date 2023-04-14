@@ -18,14 +18,14 @@ import icp
 YEAR = 2022
 MONTH = 3
 
-data_dir = '/home/taylor/SJSU-ANS_DeepRacer/data/long_little_better'
+data_dir = '/home/taylor/SJSU-ANS_DeepRacer/data/good_collect'
 files = os.listdir(data_dir)
 times = np.array([])
 subfiles = np.array([])
 for f in files:
     #split
     file_time = re.findall('\d\d', f)
-    if file_time is not None:
+    if file_time is not None and len(file_time) > 2:
         day = int(file_time[0])
         hour = int(file_time[1])
         minute = int(file_time[2])
@@ -39,9 +39,15 @@ for f in files:
 sorted_is = np.argsort(times)
 sorted_times = times[sorted_is]
 sorted_files = subfiles[sorted_is]
-sorted_files = sorted_files[450:-1]
+sorted_files = sorted_files[0:-1]
 #Identify reference frame
-ref_id = 2
+start_index = 0
+for f in sorted_files:
+    if 'nparray' in f:
+        ref_id = start_index
+        break
+    start_index+=1
+
 with open(os.path.join(data_dir, sorted_files[ref_id]), 'rb') as handle:
     ref_pointcloud = pickle.load(handle)
 ref_name = sorted_files[ref_id]
@@ -60,7 +66,7 @@ ax = plt.axes()
 
 
 
-sorted_files = sorted_files[2:-1]
+sorted_files = sorted_files[ref_id + 1:-1]
 pc_map = clean_ref_3dof[0:2, :].transpose()
 Rmap_ref = np.identity(2)
 tmap_obs = np.zeros((2,1))
@@ -71,6 +77,7 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 #ax.scatter(ref_2dof[:,0], ref_2dof[:,1], color='green')
 ax.scatter(pc_map[:,0], pc_map[:,1], color='red')
+
 ref_2dof = pc_map
 #ax.scatter(pc_map[inliers, 0], pc_map[inliers,1], color='green')
 c = 0
@@ -102,18 +109,30 @@ for f in sorted_files:
         Rmap_obs = np.matmul(Rmap_ref, Rref_obs)
         #Transform back to map frame
         tmp_pc_map = np.matmul(Rmap_obs, obs_2dof.transpose()) + tmap_obs
+        sensor_origin =np.matmul(Rmap_obs, np.zeros((2,1))) + tmap_obs
         #Re-run to original map:
         if bDoubleSac:
-            (Rblah, tblah, tmp_pc_map) = icp.run_icp(pc_map, tmp_pc_map.transpose(), verbose=False)
+            (Rdelta, tdelta, tmp_pc_map) = icp.run_icp(pc_map, tmp_pc_map.transpose(), verbose=False)
+            sensor_origin = np.matmul(Rdelta, sensor_origin) + tdelta
 
         #Prepare for next frame
         ref_2dof = obs_2dof
         Rmap_ref = Rmap_obs
         pc_map = np.vstack((pc_map, tmp_pc_map))
         ax.scatter(tmp_pc_map[:,0], tmp_pc_map[:,1], color='blue')
-        if c > 100:
+        ax.scatter(sensor_origin[0,:], sensor_origin[1,:], color='magenta')
+        if c > 500:
             break
-        print('c: ', c)
+
+    if c > 20 and c % 10:
+        #Trim points out of map
+        print('Reducing points from: ', pc_map.shape)
+        pc_map = icp.trimPoints(pc_map, include_radius=.05)
+        print('to: ', pc_map.shape)
+
     c+=1
 
+
+
+ax.scatter(pc_map[:,0], pc_map[:,1], color='green')
 # %%

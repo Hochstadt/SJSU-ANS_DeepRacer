@@ -6,6 +6,29 @@ import math
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import pyransac3d as pyrsc
+def trimPoints(point_cloud, include_radius = .01):
+    h, w = point_cloud.shape
+    if h > w:
+        point_cloud = point_cloud.transpose()
+
+    trimmed_pt_cloud =np.empty((2,0))
+    include_ind = np.ones((point_cloud.shape[1],))
+    for i in range(0, point_cloud.shape[1]):
+        p = point_cloud[:,i]
+        if include_ind[i] == 1:
+            #Evaluate
+            dist = np.subtract(p.reshape((2, 1)) , point_cloud)
+            dist = np.sqrt(dist[0,:]**2 + dist[1, :]**2)
+            ind = dist <= include_radius
+            #Don't look at all neighbors within radius
+            include_ind[ind] = 0
+            trimmed_pt_cloud = np.append(trimmed_pt_cloud, p.reshape((2,1)), axis=1)
+    
+    if h > w:
+        #flip back
+        point_cloud = point_cloud.transpose()
+        trimmed_pt_cloud = trimmed_pt_cloud.transpose()
+    return trimmed_pt_cloud
 
 def linesac(point_cloud, include_radius = .1):
     ransac_line = pyrsc.Line()
