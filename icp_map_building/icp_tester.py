@@ -1,4 +1,5 @@
 #%%
+import pyransac3d as pyrsc
 import pickle
 import sys
 from mpl_toolkits import mplot3d
@@ -14,7 +15,6 @@ import numpy as np
 import datetime
 import icp
 
-# %%
 YEAR = 2022
 MONTH = 3
 
@@ -39,92 +39,81 @@ for f in files:
 sorted_is = np.argsort(times)
 sorted_times = times[sorted_is]
 sorted_files = subfiles[sorted_is]
-#%%
-#First do a simple test, the first and second point clouds...
-with open(os.path.join(data_dir, sorted_files[1]), 'rb') as handle:
+sorted_files = sorted_files[450:-1]
+#Identify reference frame
+ref_id = 2
+with open(os.path.join(data_dir, sorted_files[ref_id]), 'rb') as handle:
     ref_pointcloud = pickle.load(handle)
+ref_name = sorted_files[ref_id]
 ref_2dof = np.array([ref_pointcloud[0,:], ref_pointcloud[1,:]]).transpose()
+ref_3dof = np.array([ref_pointcloud[0,:], ref_pointcloud[1,:], ref_pointcloud[2,:]])
 
 
-#ICP for the win
+#ransac_line = pyrsc.Line()
+#(A, B, inliers) = ransac_line.fit(ref_3dof.transpose())
+clean_ref_3dof = icp.linesac(ref_3dof, include_radius=1)
 fig = plt.figure()
 ax = plt.axes()
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.scatter(ref_2dof[:, 0], ref_2dof[:,1], color='red')
+#ax.scatter(ref_3dof[0,:], ref_3dof[1,:], color='red')
+#ax.scatter(clean_ref_3dof[0,:], clean_ref_3dof[1,:], color='green')
 
 
-with open(os.path.join(data_dir, sorted_files[77]), 'rb') as handle:
-            obs_pointcloud = pickle.load(handle)
-obs_2dof = np.array([obs_pointcloud[0,:], obs_pointcloud[1,:]]).transpose()
-(history, aligned_pts, R, t) = icp.run_icp(ref_2dof, obs_2dof, verbose=True)
-ax.scatter(aligned_pts[:,0], aligned_pts[:,1], color='green')
-ax.scatter(obs_2dof[:,0], obs_2dof[:,1], color='blue')
-'''
-To use ICP in a series of points need to align each point cloud successively, to not
-have to do this a lot we need to chain the R,t togheter. The following for loop was making sure
-I could do this. The rotation seems correct, but seomthing is off int erms of the translation
-So come and figure that out!
-'''
-'''
-t = np.zeros((2,1))
-R = np.identity(2)
-for h in history:
-    R1_0 = h[0:2,0:2]
-    t1_0 = h[0:2, 2].reshape(2,1)
-    #print(t1_0)
-    #t = t1_0+np.matmul(R, t)
-    R = np.matmul(R1_0 , R)
-    if t[0] == 0:
-        t = t1_0
-    else:
-        t = t1_0 + np.matmul(R1_0, t)
-
-    #t = t+t1_0 #np.matmul(R.transpose(), t1_0)
-    #print('Summ')
-    #print(t)
-'''
-#Make sure we understand translation/rotation
-new_aligned_pts = np.matmul(R, (obs_2dof.transpose())) + t
-#new_aligned_pts = obs_2dof.transpose()
-ax.scatter(new_aligned_pts[0,:], new_aligned_pts[1,:], color='black')
-plt.show()
 
 
-#iteration 1
-#R = R1_0
-#t goes from 0 to 1
-#iteration 2
-#t goes from 1 to 2
-#R2_0 = R2_1 * R1_0
+sorted_files = sorted_files[2:-1]
+pc_map = clean_ref_3dof[0:2, :].transpose()
+Rmap_ref = np.identity(2)
+tmap_obs = np.zeros((2,1))
 
-#%%
-
-for f in sorted_files:
-    if 'nparray' in f:
-        with open(os.path.join(data_dir, sorted_files[77]), 'rb') as handle:
-            obs_pointcloud = pickle.load(handle)
-
-        obs_2dof = np.array([obs_pointcloud[0,:], obs_pointcloud[1,:]]).transpose()
-        (history, aligned_pts) = icp.run_icp(ref_2dof, obs_2dof, verbose=False)
-
-#ICP for the win
 fig = plt.figure()
-ax = plt.axes()
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.scatter(ref_2dof[:, 0], ref_2dof[:,1], color='red')
-ax.scatter(obs_2dof[:,0], obs_2dof[:,1], color='blue')
+ax =plt.axes()
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+#ax.scatter(ref_2dof[:,0], ref_2dof[:,1], color='green')
+ax.scatter(pc_map[:,0], pc_map[:,1], color='red')
+ref_2dof = pc_map
+#ax.scatter(pc_map[inliers, 0], pc_map[inliers,1], color='green')
+c = 0
+bOutlierRej = True
+bDoubleSac = True
 
+for f in sorted_files:    
+    if 'nparray' in f and c % 1 == 0:
+        print('Loading file: ', f)
+        with open(os.path.join(data_dir, f), 'rb') as handle:
+            obs_pointcloud = pickle.load(handle)
+            
+        
+        obs_3dof = np.array([obs_pointcloud[0,:], obs_pointcloud[1,:], obs_pointcloud[2,:]])
+        if bOutlierRej:
+            obs_3dof = icp.linesac(obs_3dof, include_radius=1)
+        #Size Nx2
+        obs_2dof = np.array([obs_3dof[0,:], obs_3dof[1,:]]).transpose()
 
+        #Run ICP to get pose info:
+        #Expects size Nx2
+        (Rref_obs, tref_obs, dont_use) = icp.run_icp(ref_2dof, obs_2dof, verbose=False)        
+        #create pose BACK to original map frame
+        if tref_obs[0] == 0:
+            tmap_obs = tref_obs
+        else:
+            tmap_obs = tmap_obs + np.matmul(Rmap_ref, tref_obs)
 
+        Rmap_obs = np.matmul(Rmap_ref, Rref_obs)
+        #Transform back to map frame
+        tmp_pc_map = np.matmul(Rmap_obs, obs_2dof.transpose()) + tmap_obs
+        #Re-run to original map:
+        if bDoubleSac:
+            (Rblah, tblah, tmp_pc_map) = icp.run_icp(pc_map, tmp_pc_map.transpose(), verbose=False)
 
-
-
-#ax.scatter(ref_2dof[:, 0], ref_2dof[:,1], color='red')
-#ax.scatter(obs_2dof[:,0], obs_2dof[:,1], color='blue')
-ax.scatter(aligned_pts[:,0], aligned_pts[:,1], color='green')
-plt.show()
-display(fig)
+        #Prepare for next frame
+        ref_2dof = obs_2dof
+        Rmap_ref = Rmap_obs
+        pc_map = np.vstack((pc_map, tmp_pc_map))
+        ax.scatter(tmp_pc_map[:,0], tmp_pc_map[:,1], color='blue')
+        if c > 100:
+            break
+        print('c: ', c)
+    c+=1
 
 # %%

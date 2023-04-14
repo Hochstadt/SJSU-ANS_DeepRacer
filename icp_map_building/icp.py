@@ -5,6 +5,30 @@
 import math
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+import pyransac3d as pyrsc
+
+def linesac(point_cloud, include_radius = .1):
+    ransac_line = pyrsc.Line()
+    cleaned_pt_cloud = np.empty((3,0))
+    #p = point_cloud[:, 0]
+    #iterations = 100
+    for i in range(0, point_cloud.shape[1]):
+        p = point_cloud[:, i]
+        #get distance to all other points
+        dist = np.subtract(p.reshape((3, 1)) , point_cloud)
+        dist = np.sqrt(dist[0,:]**2 + dist[1, :]**2 + dist[2,:]**2)
+        #Get all points that are within 1m of this point and fit
+        ind = dist <= include_radius
+        pot_inliers = point_cloud[:, ind]
+        if pot_inliers.shape[1] > 10:
+            (A, B, inliers) = ransac_line.fit(pot_inliers.transpose(),  thresh=.05, maxIteration=50)
+            #print('Inlier amnt: ', inliers.shape)
+            #Update new point:
+            #p = pot_inliers[:, -1]
+            cleaned_pt_cloud = np.append(cleaned_pt_cloud, pot_inliers[:, inliers], axis = 1)
+            #Remove identical poitns
+            cleaned_pt_cloud = np.unique(cleaned_pt_cloud, axis = 1)#<_ hoping the 3Dimensions are along column, 3xN
+    return cleaned_pt_cloud
 
 
 
@@ -38,8 +62,12 @@ def point_based_matching(point_pairs):
         return None, None, None
 
     for pair in point_pairs:
+        #Iterate through all point paris
         (x,y), (xp, yp) = pair
-
+        #p - original points
+        #no p - new points
+        
+        #Find conglomerative mean of x and y of each corresponding point
         x_mean += x
         y_mean += y
         xp_mean += xp
@@ -57,7 +85,9 @@ def point_based_matching(point_pairs):
     s_x_yp = 0
     s_y_xp = 0
     for pair in point_pairs:
+        #Once again iterate through all
         (x,y), (xp, yp) = pair
+        #Find deviations from the mean on each, then multiply
         s_x_xp += (x - x_mean) * (xp - xp_mean)
         s_y_yp += (y - y_mean) * (yp - yp_mean)
         s_x_yp += (x - x_mean) * (yp - yp_mean)
@@ -147,7 +177,7 @@ def run_icp(reference_points, points, max_iterations = 100, distance_threshold=.
                 print('Converged')
             break
 
-    return transformation_history, points, total_rot, total_translation
+    return total_rot, total_translation, aligned_points
         
 
 
