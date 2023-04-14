@@ -77,7 +77,7 @@ then
 else
   echo "Common interfaces packages already exists and is built"
 fi
-source $COMMON_INF_PATH/install/local_setup.bash
+source $COMMON_INF_PATH/install/setup.bash
 
 
 
