@@ -12,6 +12,9 @@
 #include <Eigen/Geometry>
 #include <string>
 #include <ans_msgs/srv/file_path.hpp>
+#include <ans_msgs/srv/pose.hpp>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <memory>
 
@@ -30,7 +33,7 @@ public:
          std::placeholders::_1, std::placeholders::_2));                                
          
     //Create Goal State Loader Service
-    gs_srv = create_service<ans_msgs::srv::FilePath>(
+    gs_srv = create_service<ans_msgs::srv::Pose>(
         "goal_state_loader", std::bind(&ServerNode::load_goal_state, this,
          std::placeholders::_1, std::placeholders::_2));      
                                                                    
@@ -90,28 +93,28 @@ private:
     response->success = true;
   }
   
-  void load_goal_state(std::shared_ptr<ans_msgs::srv::FilePath::Request> request,
-	               std::shared_ptr<ans_msgs::srv::FilePath::Response> response)
+  void load_goal_state(std::shared_ptr<ans_msgs::srv::Pose::Request> request,
+	               std::shared_ptr<ans_msgs::srv::Pose::Response> response)
   {
     // Notify users of start of node
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Goal State from %s", request->file_path.c_str());
-  
-    //Initialize variables to store PCL transformation
-    pcl::PointCloud<pcl::PointXYZ>::Ptr mapCloud (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PCLPointCloud2 pcl_pc;
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Goal State");
+    
+    // Convert Angles to Quaterion
+    tf2::Quaternion quat(request->quat_x, request->quat_y, request->quat_z, request->quat_w);
             
-    //Read PCD file
-    pcl::io::loadPCDFile<pcl::PointXYZ>(request->file_path, *mapCloud);
-    pcl::toPCLPointCloud2(*mapCloud, pcl_pc);
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Data points in cloud: %d", mapCloud->width*mapCloud->height);
-  
-    //Generate Point Cloud Message
-    sensor_msgs::msg::PointCloud2 mapMessage;
-    pcl::toROSMsg(*mapCloud, mapMessage);
-    mapMessage.header.frame_id = "/odom";
+    // Create PoseStamped Msg
+    geometry_msgs::msg::PoseStamped pose_msg;
+    pose_msg.header.frame_id = "/odom";
+    pose_msg.pose.position.x = request->pos_x;
+    pose_msg.pose.position.y = request->pos_y;
+    pose_msg.pose.position.z = request->pos_z;
+    pose_msg.pose.orientation.x = quat.getX();
+    pose_msg.pose.orientation.y = quat.getY();
+    pose_msg.pose.orientation.z = quat.getZ();
+    pose_msg.pose.orientation.w = quat.getW();
 
     // Create Publish Goal State
-    //mGoalStatePub->publish(mapMessage);  
+    mGoalStatePub->publish(pose_msg);  
     response->success = true;
   }
   
@@ -120,7 +123,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr mGoalStatePub;
   rclcpp::Service<ans_msgs::srv::FilePath>::SharedPtr nav_map_srv;
   rclcpp::Service<ans_msgs::srv::FilePath>::SharedPtr occ_map_srv;
-  rclcpp::Service<ans_msgs::srv::FilePath>::SharedPtr gs_srv;
+  rclcpp::Service<ans_msgs::srv::Pose>::SharedPtr gs_srv;
 };
 
 int main(int argc, char *argv[]) {

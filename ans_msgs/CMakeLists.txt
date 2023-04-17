@@ -10,12 +10,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-set(srv_files
-  "srv/FilePath.srv"
-)
-
 rosidl_generate_interfaces(${PROJECT_NAME}
-  ${srv_files}
+  "srv/FilePath.srv"
+  "srv/Pose.srv"
  )
 
 ament_export_dependencies(rosidl_default_runtime)
