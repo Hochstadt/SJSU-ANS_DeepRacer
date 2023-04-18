@@ -43,10 +43,16 @@
                     <min>0.3</min>
                     <max>12</max>
                 </range>
+                <noise>
+                    <!-- Use gaussian noise -->
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.1</stddev>
+                </noise>
             </ray>
-            <plugin name="laser_controller" filename="libgazebo_ros_ray_sensor.so">
+            <plugin name="rplidar_ros" filename="libgazebo_ros_ray_sensor.so">
                 <ros>
-                    <argument>--ros-args --remap ~/out:=scan</argument>
+                    <argument>~/out:=rplidar_ros/scan</argument>
                 </ros>
                 <output_type>sensor_msgs/LaserScan</output_type>
                 <frame_name>laser_frame</frame_name>
