@@ -9,9 +9,10 @@
 #include <string>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <pcl/registration/gicp.h>
 #include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 using pcl::GeneralizedIterativeClosestPoint;
@@ -51,8 +52,14 @@ class localization : public rclcpp::Node
                 std::bind(&localization::store_goal_state, 
                 this, std::placeholders::_1));
                 
-           // Create LiDAR scan message subscriber
+           // Create Localization Pose Estimate publisher
            mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization/pose", qos);
+           
+           // Create atGoalState publisher
+           mAtGoalStatePub = this->create_publisher<std_msgs::msg::Bool>("/localization/at_goal_state_msg", qos);
+           
+           // Create solutionFound publisher
+           mSolutionFoundPub = this->create_publisher<std_msgs::msg::Bool>("/localization/solution_found", qos);
         }
 
     private:
@@ -102,8 +109,9 @@ class localization : public rclcpp::Node
             // Get Pose Estimate
             const Eigen::Matrix4f T = icp.getFinalTransformation();
             
+                        
             // Check Goal State
-            //at_goal_state(T);
+            at_goal_state(T);
             
             // Convert Pose to PoseStamped msg
             geometry_msgs::msg::PoseStamped ros_pose;
@@ -144,22 +152,44 @@ class localization : public rclcpp::Node
   	
   	void at_goal_state(Eigen::Matrix4f pose)
   	{
-            // Compare poses
-            // do something here
+            // Transform goal state to Eigen Matrix
+            Eigen::Matrix4d Tgoal_state;
+            Tgoal_state = goalState.matrix();
             
-            // set goal state flag
-            atGoalState = true;  
+            // Get Transform from Current State and Goal State
+            Eigen::Matrix4d Tgoal_current = Tgoal_state.inverse() * pose.cast<double>();
+            
+            // Initial message
+            std_msgs::msg::Bool atGoalStateMsg;
+            
+            // Check if current state within threshold of goal
+            if (abs(Tgoal_current(0,1)) < rotationThreshold && sqrt(pow(Tgoal_current(0,3), 2) + pow(Tgoal_current(1,3), 2) + pow(Tgoal_current(2,3), 2)) < positionThrehsold) {
+            	// set goal state flag
+            	atGoalStateMsg.data = true;  
+            	
+            } else {
+            	// set goal state flag
+            	atGoalStateMsg.data = false;
+            	
+            }
+            
+            // Publish goal state message
+            mAtGoalStatePub->publish(atGoalStateMsg);
         }      
         
         rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mMapSub;
         rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mLidarPtCloudSub;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mGoalStateSub;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr mPoseEstPub;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mAtGoalStatePub;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mSolutionFoundPub;
 	pcl::PCLPointCloud2 envMapPCL2;
-	tf2::Transform goalState;
+	Eigen::Affine3d goalState;
 	bool localizationType;
 	bool solutionFound;
 	bool atGoalState;
+	double rotationThreshold = 0.017;
+	double positionThrehsold = 0.010;
 };
 
 int main(int argc, char ** argv) {

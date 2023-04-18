@@ -12,12 +12,14 @@ find_package(PCL REQUIRED QUIET COMPONENTS core features filters io segmentation
 
 ## Find ROS package dependencies
 find_package(ament_cmake REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(laser_geometry REQUIRED)
 
 set(dependencies
@@ -27,6 +29,7 @@ set(dependencies
   geometry_msgs
   tf2
   tf2_geometry_msgs
+  tf2_eigen
   laser_geometry
   EIGEN3
   PCL
@@ -35,7 +38,7 @@ set(dependencies
 add_executable(localization src/localization.cpp)
 target_link_libraries(localization ${PCL_LIBRARIES})
 
-ament_target_dependencies(localization ${dependencies} geometry_msgs tf2_geometry_msgs)
+ament_target_dependencies(localization ${dependencies} geometry_msgs tf2_geometry_msgs tf2_eigen)
 
 install(TARGETS localization
   DESTINATION lib/${PROJECT_NAME})
