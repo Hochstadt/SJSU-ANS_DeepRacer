@@ -35,7 +35,7 @@ class localization : public rclcpp::Node
             
             // Create Map Load message subscriber
             mMapSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-                "/map_loader/map_pt_msg", 10, 
+                "/ans_services/map_pt_msg", 10, 
                 std::bind(&localization::store_map, 
                 this, std::placeholders::_1));
                 
@@ -47,7 +47,7 @@ class localization : public rclcpp::Node
                 
            // Create Goal State message subscriber
             mGoalStateSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-                "/goal_state/pose", qos, 
+                "/ans_services/goal_state_msg", qos, 
                 std::bind(&localization::store_goal_state, 
                 this, std::placeholders::_1));
                 
@@ -79,9 +79,6 @@ class localization : public rclcpp::Node
         
         void estimate_pose(const sensor_msgs::msg::PointCloud2::SharedPtr _msg)
         {
-                   
-            // Inform that message was received
-            RCLCPP_INFO(this->get_logger(), "LiDAR Point Cloud has been received  with %i points",_msg->height*_msg->width);
             
             // Initialize variables to store PCL transformation
             pcl::PCLPointCloud2 tmpLidar;
@@ -104,7 +101,6 @@ class localization : public rclcpp::Node
             
             // Get Pose Estimate
             const Eigen::Matrix4f T = icp.getFinalTransformation();
-            std::cout << "Pose: " << T << std::endl;
             
             // Check Goal State
             //at_goal_state(T);
@@ -115,6 +111,8 @@ class localization : public rclcpp::Node
             
             // Publish Pose
             ros_pose.header.frame_id = "/odom";
+            ros_pose.header.stamp.sec = _msg->header.stamp.sec;
+            ros_pose.header.stamp.nanosec = _msg->header.stamp.nanosec;
             mPoseEstPub->publish(ros_pose);                          
            
   	}
