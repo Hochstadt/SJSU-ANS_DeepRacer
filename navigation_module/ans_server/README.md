@@ -54,7 +54,7 @@
 >>ros2 run ans_server cfg_server
 ```
 
-# To load point cloud map, occupyance map and goal state:
+# To load point cloud map, occupancy map and goal state:
 ## On DeepRacer or Linux Computer:
 0. In new terminal window, source Directories
   
