@@ -36,23 +36,23 @@ class localization : public rclcpp::Node
             // Create Map Load message subscriber
             mMapSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
                 "/map_loader/map_pt_msg", 10, 
-                std::bind(&localizer::store_map, 
+                std::bind(&localization::store_map, 
                 this, std::placeholders::_1));
                 
             // Create LiDAR scan message subscriber
             mLidarPtCloudSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
                 "/lidar_scan_acq/lidar_pt_msg", qos, 
-                std::bind(&localizer::estimate_pose, 
+                std::bind(&localization::estimate_pose, 
                 this, std::placeholders::_1));
                 
            // Create Goal State message subscriber
             mGoalStateSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
                 "/goal_state/pose", qos, 
-                std::bind(&localizer::store_goal_state, 
+                std::bind(&localization::store_goal_state, 
                 this, std::placeholders::_1));
                 
            // Create LiDAR scan message subscriber
-           mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localizer/pose", qos);
+           mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization/pose", qos);
         }
 
     private:
@@ -111,7 +111,7 @@ class localization : public rclcpp::Node
             
             // Convert Pose to PoseStamped msg
             geometry_msgs::msg::PoseStamped ros_pose;
-            ros_pose = localizer::convert_pose_to_msg(T);
+            ros_pose = localization::convert_pose_to_msg(T);
             
             // Publish Pose
             ros_pose.header.frame_id = "/odom";
@@ -166,7 +166,7 @@ class localization : public rclcpp::Node
 
 int main(int argc, char ** argv) {
 	rclcpp::init(argc, argv);
-	rclcpp::spin(std::make_shared<localizer>());
+	rclcpp::spin(std::make_shared<localization>());
 	rclcpp::shutdown();
 	return 0;
 }
