@@ -6,6 +6,40 @@ import math
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import pyransac3d as pyrsc
+
+def trimPointsV2(point_cloud, scan_radius = .1, POINT_THRESH=2):
+    #Define grid to nonmax on
+    max_x = np.max(point_cloud[:, 0])
+    max_y = np.max(point_cloud[:, 1])
+    min_x = np.min(point_cloud[:, 0])
+    min_y = np.min(point_cloud[:, 1])
+    
+    #Create the rang eusing arange
+    xgrid = np.arange(min_x, max_x, scan_radius)
+    ygrid = np.arange(min_y, max_y, scan_radius)
+    new_pts = []
+    c = 0
+    for x in xgrid:
+        #if c % 10 == 0:
+        #    print('iteration: ', c, 'out of ', len(xgrid))
+        back_x = x - scan_radius/2
+        for_x = x + scan_radius/2
+        x_i = np.logical_and(point_cloud[:,0] >= back_x, point_cloud[:,0] < for_x)
+        c+=1
+        if sum(x_i) >= POINT_THRESH:
+            for y in ygrid:
+                back_y = y - scan_radius/2
+                for_y = y + scan_radius/2
+                #Capture all points within the sqaure
+                y_i = np.logical_and(point_cloud[:, 1] >= back_y, point_cloud[:,1] < for_y)
+                log_i = np.logical_and(x_i, y_i)
+                captured_points = point_cloud[log_i, :]
+                if captured_points.shape[0] >= POINT_THRESH:  
+                    #print('Captured ', captured_points.shape[0], 'points')                  
+                    new_pts.append(np.mean(captured_points, axis=0))
+            
+    return np.array(new_pts)
+
 def trimPoints(point_cloud, include_radius = .01):
     h, w = point_cloud.shape
     if h > w:
@@ -67,6 +101,70 @@ def euclidean_distance(point1, point2):
 
     return np.linalg.norm(a-b, ord=2)
 
+def refine_point_pairs(point_pairs, D=-1):
+
+    n = len(point_pairs)
+    if n == 0:
+        print('Yopu done messed up')
+
+    #Find mean
+    dist_mean = 0
+    max_dist = 0
+    for pair in point_pairs:
+        (x,y), (xp, yp) = pair
+        dist = euclidean_distance([x,y], [xp, yp])
+        dist_mean += dist
+        if dist > max_dist:
+            max_dist = dist
+
+    #set eta as 75% of the Dmax
+    eta = max_dist * .75
+
+    dist_mean /= n
+    #Find std
+    dist_std = 0
+    for pair in point_pairs:
+        (x,y), (xp, yp) = pair
+        dist_std += (euclidean_distance([x,y], [xp, yp]) - dist_mean)**2
+
+    dist_std = math.sqrt(1/n * dist_std)
+    if D == -1:
+        #This is kind of the idle time, when we should have perfect matches. Thus D will be equal
+        #to the mean
+        D = dist_mean
+        Dmax = dist_mean + 3 * dist_std
+        return point_pairs, Dmax, D
+    else:
+        
+        if dist_mean < D:
+            #Good match
+            Dmax = dist_mean + 3 * dist_std
+        elif dist_mean < 3 * D:
+            #okay match
+            Dmax = dist_mean + 2 * dist_std
+        elif dist_mean < 6 * D:
+            #not so good match
+            Dmax = dist_mean + dist_std
+        else:
+            #bad match
+            Dmax = eta
+
+        #Now run through pairs one more time and expel any pairs that have
+        #distances larger than Dmax
+        to_pop_index = []
+        to_keep_index = []
+        
+        for indx, pair in enumerate(point_pairs):
+            (x,y), (xp, yp) = pair
+            if euclidean_distance([x,y], [xp, yp]) > Dmax:
+                to_pop_index.append(indx)
+            else:
+                to_keep_index.append(indx)        
+        #pop in reverse so that indexing doesn't get off
+        #(ie. biggest to smallest)
+        for indx in reversed(to_pop_index):            
+            point_pairs.pop(indx)
+        return point_pairs, to_keep_index, to_pop_index
 
 
 def point_based_matching(point_pairs):
@@ -80,9 +178,13 @@ def point_based_matching(point_pairs):
     y_mean = 0
     xp_mean = 0
     yp_mean = 0
+    
     n = len(point_pairs)
     if n == 0:
         return None, None, None
+    
+    
+
 
     for pair in point_pairs:
         #Iterate through all point paris
@@ -101,12 +203,11 @@ def point_based_matching(point_pairs):
     xp_mean /= n
     yp_mean /= n
 
-
-
     s_x_xp = 0
     s_y_yp = 0
     s_x_yp = 0
     s_y_xp = 0
+    std_dist = 0
     for pair in point_pairs:
         #Once again iterate through all
         (x,y), (xp, yp) = pair
@@ -116,6 +217,8 @@ def point_based_matching(point_pairs):
         s_x_yp += (x - x_mean) * (yp - yp_mean)
         s_y_xp += (y - y_mean) * (xp - xp_mean)
 
+    
+
     rot_angle = math.atan2(s_x_yp - s_y_xp, s_x_xp + s_y_yp)
     translation_x = xp_mean - (x_mean * math.cos(rot_angle) - y_mean*math.sin(rot_angle))
     translation_y = yp_mean - (x_mean * math.sin(rot_angle) + y_mean*math.cos(rot_angle))
@@ -123,7 +226,7 @@ def point_based_matching(point_pairs):
     return rot_angle, translation_x, translation_y
 
 
-def run_icp(reference_points, points, max_iterations = 100, distance_threshold=.3, convergence_translation_threshold=1e-3,
+def run_icp(reference_points, points, D, max_iterations = 100, distance_threshold=.3, convergence_translation_threshold=1e-3,
         convergence_rotation_threshold=1e-4, point_pairs_threshold=10, verbose=False):
     '''
         Matches one set of points to another set of points...
@@ -137,29 +240,51 @@ def run_icp(reference_points, points, max_iterations = 100, distance_threshold=.
         return: transformation history as a list of numpy arrays contains R and T for each iteration as well as teh newly aligned
         points
     '''
-
+    bRefinePoints = True
     total_translation = np.zeros((2,1))
     total_rot = np.identity(2)
     transformation_history = []
     nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(reference_points)
+    outlier_indices = np.array([],dtype=int)
+    bool_mask = np.ones(points.shape[0], dtype=bool)
+
     for iter_num in range(max_iterations):
         if verbose:
             print('Iterations', iter_num)
         closest_point_pairs = [] #point correspondences
+        tmp_inlier_indices = []
+        tmp_outlier_indices = []
         #find the closest neighbors using a kd_tree NN approach
         distances, indices = nbrs.kneighbors(points)
         for nn_index in range(len(distances)):
             if distances[nn_index][0] < distance_threshold:
                 #MATCH~
                 closest_point_pairs.append((points[nn_index], reference_points[indices[nn_index][0]]))
-
+                #Keep track of best points...
+                tmp_inlier_indices.append(nn_index)            
+            else:
+                tmp_outlier_indices.append(nn_index)
+                
+        
+        #points = points[np.array(tmp_inlier_indices),:]
+        #Once an outlier always and outlier...
+        #outlier_indices = np.union1d(outlier_indices, np.array(tmp_outlier_indices))
         if verbose:
             print('number of pairs found: ', len(closest_point_pairs))
         if len(closest_point_pairs) < point_pairs_threshold:
             if verbose:
                 print('No better solution can be found, not too many point pairs')
             break
-        
+        #Refine the point pairs using section 3.3 of Zhang (1994)
+
+        if bRefinePoints == True:
+            (closest_point_pairs, tmp_inlier_indices, tmp_outlier_indices) = refine_point_pairs(closest_point_pairs, D)
+            #Degrade points as well:
+            #points = points[tmp_inlier_indices, :]
+            #inlier_indices = np.union1d(inlier_indices, np.array(tmp_inlier_indices))
+            outlier_indices = np.union1d(outlier_indices, np.array(tmp_outlier_indices))
+
+
         #Get the traslation and rotatio of the point correspondences
         closest_rot_angle, closest_translation_x, closest_translation_y = point_based_matching(closest_point_pairs)
         if closest_rot_angle is not None:
@@ -199,8 +324,9 @@ def run_icp(reference_points, points, max_iterations = 100, distance_threshold=.
             if verbose:
                 print('Converged')
             break
-
-    return total_rot, total_translation, aligned_points
+    #Create mask out of outlier_indices
+    bool_mask[outlier_indices.astype(int)] = False
+    return total_rot, total_translation, aligned_points, bool_mask
         
 
 
