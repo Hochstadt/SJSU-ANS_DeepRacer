@@ -21,7 +21,8 @@ class dataCollector(Node):
         
         lp = LaserProjection()
         #SAVE_RATE seconds has passed before new measurement
-        SAVE_RATE = 0.5
+        LIDAR_SAVE_RATE = .2
+        IMG_SAVE_RATE = 1
         CAMERA_IDX_LIST = [4,3,2,1,0]
         DEFAULT_IMAGE_WIDTH = 160
         DEFAULT_IMAGE_HEIGHT = 120    
@@ -109,23 +110,26 @@ class dataCollector(Node):
              
             c_time = datetime.now()
             duration = c_time - self.lidar_time            
-            if duration.total_seconds() > self.SAVE_RATE and self.bCollectData:
-                pc2_msg = self.lp.projectLaser(msg)
+            if duration.total_seconds() > self.LIDAR_SAVE_RATE and self.bCollectData:
+                pc2_msg = self.lp.projectLaser(msg)                
                 tstamp = c_time.strftime("%d_%H_%M_%S_%f")
                 fname = tstamp + '_pc2.pickle'
                 fname = os.path.join(self.data_dir, fname)
                 with open(fname, 'wb') as handle:
                     pickle.dump(pc2_msg, handle)
                 
+                #reset time
+                self.lidar_time = c_time
+                
+            duration = c_time - self.cam_time   
+            if duration.total_seconds() > self.IMG_SAVE_RATE and self.bCollectData
                 #get frame
                 frames = self.produceFrames()
                 fname = tstamp + '_img.pickle'
                 fname = os.path.join(self.data_dir, fname)
                 with open(fname, 'wb') as handle:
                     pickle.dump(frames, handle)
-
-                #reset time
-                self.lidar_time = c_time
+                self.cam_time = c_time
                     
         def produceFrames(self):
             frames = -1
