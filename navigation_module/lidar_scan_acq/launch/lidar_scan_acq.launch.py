@@ -13,7 +13,8 @@ def generate_launch_description():
         executable='lidar_scan_acq',
         output='screen',
         parameters=[
-                {'saveData': False}
+                {'saveData': False,
+                 'maxRange': 12.0}
             ]
     ) 
     
