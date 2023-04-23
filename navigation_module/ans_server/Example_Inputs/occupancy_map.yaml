@@ -1,0 +1,10 @@
+free_thresh: 0.0
+image: occupancy_map.png
+mode: trinary
+negate: 0
+occupied_thresh: 1.0
+origin:
+- 0.0
+- 0.0
+- 0.0
+resolution: 5
