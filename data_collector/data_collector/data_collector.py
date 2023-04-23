@@ -122,9 +122,10 @@ class dataCollector(Node):
                 self.lidar_time = c_time
                 
             duration = c_time - self.cam_time   
-            if duration.total_seconds() > self.IMG_SAVE_RATE and self.bCollectData
+            if duration.total_seconds() > self.IMG_SAVE_RATE and self.bCollectData:
                 #get frame
                 frames = self.produceFrames()
+                tstamp = c_time.strftime("%d_%H_%M_%S_%f")
                 fname = tstamp + '_img.pickle'
                 fname = os.path.join(self.data_dir, fname)
                 with open(fname, 'wb') as handle:
