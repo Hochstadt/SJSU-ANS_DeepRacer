@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(deepracer_sim)
+project(deepracer_description)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -17,9 +17,31 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(gazebo_ros_pkgs REQUIRED)
+find_package(rclcpp REQUIRED)
+# find_package(rclcpp_lifecycle REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
+
+include_directories(
+  include
+)
+
+set(dependencies
+  rclcpp
+  tf2_geometry_msgs
+  geometry_msgs
+  tf2_ros
+  tf2
+)
+
+install(DIRECTORY models meshes
+  DESTINATION share/${PROJECT_NAME}
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -29,12 +51,7 @@ if(BUILD_TESTING)
   # the following line skips cpplint (only works in a git repo)
   # uncomment the line when this package is not in a git repo
   #set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
+  #ament_lint_auto_find_test_dependencies()
 endif()
-
-install(
-  DIRECTORY config description launch worlds
-  DESTINATION share/${PROJECT_NAME}
-)
 
 ament_package()
