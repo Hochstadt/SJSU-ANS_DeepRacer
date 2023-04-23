@@ -15,14 +15,18 @@ using namespace std::chrono_literals;
 class lidar_scan_acq : public rclcpp::Node
 {
     public: 
-        lidar_scan_acq() : Node("lidar_scan_acq"), saveData_(false)
+        lidar_scan_acq() : Node("lidar_scan_acq"), saveData_(false), maxRange_(-1.0)
         {
             // Notify users of start of node
              RCLCPP_INFO(this->get_logger(), "Starting up lidar_scan_acq node");
             
-            // Set saveData_ flah
+            // Set saveData_ flag
             this->declare_parameter<bool>("saveData", saveData_);
             saveData_ = this->get_parameter("saveData").as_bool();
+            
+            // Set max range value
+            this->declare_parameter<double>("maxRange", maxRange_);
+            maxRange_ = this->get_parameter("maxRange").as_double();
             
             // Set QoS parameters
             auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
@@ -45,7 +49,8 @@ class lidar_scan_acq : public rclcpp::Node
 
             // Convert scan to point cloud msg
             auto lidarScanMsg = sensor_msgs::msg::PointCloud2();
-            projector.projectLaser(*_msg, lidarScanMsg, -1.0, laser_geometry::channel_option::Intensity);
+            projector.projectLaser(*_msg, lidarScanMsg, maxRange_, laser_geometry::channel_option::Intensity);
+            lidarScanMsg.header.frame_id ="laser_frame";
             
             // Publish LiDAR scan point cloud
             mLidarPtCloudPub->publish(lidarScanMsg);  
@@ -76,6 +81,7 @@ class lidar_scan_acq : public rclcpp::Node
         rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mLidarPtCloudPub;
         laser_geometry::LaserProjection projector;
         std::atomic<bool> saveData_;
+        double maxRange_;
 };
 
 int main(int argc, char ** argv) {
