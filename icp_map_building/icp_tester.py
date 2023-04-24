@@ -178,4 +178,11 @@ if bDisplay:
     plt.scatter(full_pc_map[:,0], full_pc_map[:,1], color='blue')
     plt.show()
 
+#Save the finalized map as pickle file
+c_time = datetime.datetime.now()
+tstamp = c_time.strftime("%d_%H_%M_%S_%f")
+fname = tstamp + '_final_map.pickle'
+fname = os.path.join(data_dir, fname)
+with open(fname, 'wb') as handle:
+    pickle.dump(full_pc_map, handle)
 # %%
