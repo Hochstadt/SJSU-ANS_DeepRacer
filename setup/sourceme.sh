@@ -103,6 +103,8 @@ then
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   DATA_COL_PATH="$CUR_PATH/data_collector"
+  LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
+  LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
   cd $DEP_PATH
 
   # Camera
@@ -187,7 +189,31 @@ then
     fi
     source $DATA_COL_PATH/install/setup.bash
   fi
+  #localizer
+  #################################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $LOCALIZER_PATH/build ]
+    then
+      echo "Building localization package"
+      cd $LOCALIZER_PATH && colcon build
+    fi
+    source $LOCALIZER_PATH/install/setup.bash
+  fi
     
+  #lidar_scan_acq
+  #################################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $LIDARACQ_PATH/build ]
+    then
+      echo "Building lidar acquisition package"
+      cd $LIDARACQ_PATH && colcon build
+    fi
+    source $LIDARACQ_PATH/install/setup.bash
+  fi
 elif [ $1 = "host" ]
 then
   ####################################################################
