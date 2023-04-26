@@ -90,6 +90,17 @@ class mapLoader(Node):
             #Now attempt a publish
             self.get_logger().info('Sending Point Cloud To Car')
 
+            point_list = point_cloud2.read_points_list(pc)
+            pl_length = len(point_list)
+            point_array = np.empty((3, pl_length))
+            for i, p in enumerate(point_list):
+                point_array[0, i] = p.x
+                point_array[1,i] = p.y
+                point_array[2,i] = p.z
+            with open('tmpmap.pickle', 'wb') as handle:
+                    pickle.dump(point_array, handle)
+
+
             while rclpy.ok() and self.bMapLoaded == False:        
                 self.map_publisher.publish(pc)
                 self.bMapLoaded = True
