@@ -1,4 +1,5 @@
 #%%
+import open3d as o3d
 import pyransac3d as pyrsc
 import pickle
 import sys
@@ -16,14 +17,14 @@ import datetime
 import icp
 import math
 #Variables
-data_dir = '/home/taylor/SJSU-ANS_DeepRacer/data/slowis_steady'
+data_dir = '../data/slowis_steady'
 YEAR = 2022
 MONTH = 3
 #Helps set the starting frame
 start_index = 0
 INFO_EVERY = 10
 DISPLAY_EVERY = 50
-STOP_AFTER = 5000000
+STOP_AFTER = 50000
 
 #ICP
 #the value to help with outlier rejection
@@ -176,8 +177,10 @@ for f in sorted_files:
 
 if bDisplay:
     plt.scatter(full_pc_map[:,0], full_pc_map[:,1], color='blue')
+    plt.xlabel('X')
+    plt.ylabel('Y')
     plt.show()
-
+#%%
 #Save the finalized map as pickle file
 c_time = datetime.datetime.now()
 tstamp = c_time.strftime("%d_%H_%M_%S_%f")
@@ -185,4 +188,71 @@ fname = tstamp + '_final_map.pickle'
 fname = os.path.join(data_dir, fname)
 with open(fname, 'wb') as handle:
     pickle.dump(full_pc_map, handle)
+
+
+#%% Now also use open3d to create the pcd file 
+pts = []
+for i in range(full_pc_map.shape[0]):
+    x = full_pc_map[i, 0]
+    y = full_pc_map[i, 1]
+    z = 0
+    pt3D = np.array([x, y, z])
+    pts.append(pt3D)
+pts = np.array(pts)
+
+sample_pcd_data = o3d.data.PCDPointCloud()
+pcd = o3d.geometry.PointCloud()
+pcd.points = o3d.utility.Vector3dVector(pts)
+fname = tstamp + '_final_map.pcd'
+o3d.io.write_point_cloud(os.path.join(data_dir, fname), pcd)
+# %%
+plt.plot(pts[:,0],pts[:,1], '*', color='red', markersize=5)
+plt.axis('equal')
+plt.show()
+
+# %%
+# Now lets see about generating an occupancy map image thingy
+# Specify size and resolution of map
+gridSizeMeters = 16
+res = .05
+
+# Calculate grid size and center location
+gridSize = gridSizeMeters/res
+center = np.array([(gridSize-1)/2, (gridSize-1)/2])
+
+# Initialize Occupancy Map
+occGrid = np.zeros((int(gridSize),int(gridSize),3), dtype=np.uint8)
+
+# Loop through each point in point cloud
+num_pts = pts.shape
+for i in range(0, num_pts[0]):
+
+  # Set location in Occupancy Map to occupied
+  location = pts[i,:2]/res + center
+  occGrid[int(location[0]),int(location[1])] = [255,255,255]
+
+plt.imshow(occGrid, interpolation='none')
+plt.show()
+# %%
+import yaml
+from PIL import Image
+# Create Occupancy Map YAML Strucutre
+occupancy_grid = dict()
+occupancy_grid['resolution'] = res
+occupancy_grid['origin'] = [0.0, 0.0, 0.0]
+occupancy_grid['negate'] = 0
+occupancy_grid['occupied_thresh'] = 1.0
+occupancy_grid['free_thresh'] = 0.0
+imgname = tstamp + '_occupancy_map.png'
+occupancy_grid['image'] = imgname
+occupancy_grid['mode'] = "trinary"
+
+# Write Occupancy Map YAML
+fname = tstamp + '_occupancy_map.yaml'
+with open(os.path.join(data_dir, fname), 'w') as fp:
+    yaml.dump(occupancy_grid, fp)
+
+# Save Occupancy Map image
+img = Image.fromarray(occGrid)
+img.save(os.path.join(data_dir, imgname))
 # %%
