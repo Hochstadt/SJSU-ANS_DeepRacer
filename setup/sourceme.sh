@@ -79,6 +79,32 @@ else
 fi
 source $COMMON_INF_PATH/install/setup.bash
 
+ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
+ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
+
+cd $CUR_PATH
+#ans_msgs
+####################################################
+if [ ! -d "$ANS_MSGS/build" ]
+then
+  echo "building ans_msgs"
+  cd $ANS_MSGS && colcon build
+else
+  echo "ans_msgs already built"
+fi
+source $ANS_MSGS/install/setup.bash
+
+cd $CUR_PATH
+#ans_server
+####################################################
+if [ ! -d "$ANS_SERVER/build" ]
+then
+  echo "building ans_server"
+  cd $ANS_SERVER && colcon build
+else
+  echo "ans_server already built"
+fi
+source $ANS_SERVER/install/setup.bash
 
 
 
@@ -223,6 +249,7 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
+  #MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
 
   #Rviz interface
   cd $CUR_PATH
@@ -245,6 +272,22 @@ then
     echo "ssh_controller already built"
   fi
   source $SSH_CONTROLLER_PATH/install/local_setup.bash
+
+
+
+
+  #map_loader
+  ##########################################33
+  #  
+  #cd $CUR_PATH
+  #if [ ! -d "$MAP_LOADER/build" ]
+  #then
+  #  echo "building map loader"
+  #  cd $MAP_LOADER && colcon build
+  #else
+  #  echo "map loader already built"
+  #fi
+  #source $MAP_LOADER/install/local_setup.bash
   
 else
   echo "'$1' is not an understood argument, try one of the following"
