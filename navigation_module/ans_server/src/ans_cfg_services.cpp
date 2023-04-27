@@ -13,6 +13,7 @@
 #include <string>
 #include <ans_msgs/srv/file_path.hpp>
 #include <ans_msgs/srv/pose.hpp>
+#include <ans_msgs/srv/start_flag.hpp>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
@@ -22,21 +23,15 @@ class ServerNode : public rclcpp::Node {
 public:
   ServerNode() : Node("ans_cfg_server") {
 
-    //Create Map Loader Service
-    nav_map_srv = create_service<ans_msgs::srv::FilePath>(
-        "nav_map_loader", std::bind(&ServerNode::load_nav_map, this,
-         std::placeholders::_1, std::placeholders::_2));
-         
-    //Create Occupancy Map Loader Service
-    occ_map_srv = create_service<ans_msgs::srv::FilePath>(
-        "occupancy_map_loader", std::bind(&ServerNode::load_occupancy_map, this,
-         std::placeholders::_1, std::placeholders::_2));                                
-         
-    //Create Goal State Loader Service
-    gs_srv = create_service<ans_msgs::srv::Pose>(
-        "goal_state_loader", std::bind(&ServerNode::load_goal_state, this,
-         std::placeholders::_1, std::placeholders::_2));      
-                                                                   
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Starting ANS server");
+    declare_parameter("occ_map", "occ_map.yaml");
+    get_parameter("occ_map", occ_map);
+    declare_parameter("nav_map", "nav_map.pcl");
+    get_parameter("nav_map", nav_map);            
+    declare_parameter("goal_state");
+    get_parameter("goal_state", goal_state);
+
+
     //Create Map Message Publisher
     auto qos = rclcpp::QoS(rclcpp::KeepLast(5));
     mMapCloudPub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/ans_services/map_pt_msg", qos);
@@ -46,25 +41,26 @@ public:
     
     //Create Goal State Message Publisher
     mGoalStatePub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/ans_services/goal_state_msg", qos);
-    
-    // Message users of status
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Prepared to load files");
+
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading files");
+
+    load_nav_map();
+
   }
 
 private:
 
-  void load_nav_map(std::shared_ptr<ans_msgs::srv::FilePath::Request> request,
-	            std::shared_ptr<ans_msgs::srv::FilePath::Response> response)
+  void load_nav_map()
   {
     // Notify users of start of node
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Navigation Map from %s", request->file_path.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Navigation Map from %s", nav_map.c_str());
   
     //Initialize variables to store PCL transformation
     pcl::PointCloud<pcl::PointXYZ>::Ptr mapCloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PCLPointCloud2 pcl_pc;
             
     //Read PCD file
-    pcl::io::loadPCDFile<pcl::PointXYZ>(request->file_path, *mapCloud);
+    pcl::io::loadPCDFile<pcl::PointXYZ>(nav_map.c_str(), *mapCloud);
     pcl::toPCLPointCloud2(*mapCloud, pcl_pc);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Data points in cloud: %d", mapCloud->width*mapCloud->height);
   
@@ -75,47 +71,39 @@ private:
 
     // Create Publish Navigation Map
     mMapCloudPub->publish(mapMessage);  
-    response->success = true;
   }
   
-  void load_occupancy_map(std::shared_ptr<ans_msgs::srv::FilePath::Request> request,
-	                  std::shared_ptr<ans_msgs::srv::FilePath::Response> response)
+  void load_occupancy_map()
   {
     // Notify users of start of node
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Occupancy Map from %s", request->file_path.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Occupancy Map from %s", occ_map.c_str());
   
     //Convert input file to Occupancy grid
     nav_msgs::msg::OccupancyGrid occupancy_grid_msg;
-    nav2_map_server::loadMapFromYaml(request->file_path, occupancy_grid_msg);
+    nav2_map_server::loadMapFromYaml(occ_map.c_str(), occupancy_grid_msg);
 
     // Create Publish Occupancy Map
     mMapOccupyPub->publish(occupancy_grid_msg);  
-    response->success = true;
   }
   
-  void load_goal_state(std::shared_ptr<ans_msgs::srv::Pose::Request> request,
-	               std::shared_ptr<ans_msgs::srv::Pose::Response> response)
+  void load_goal_state()
   {
     // Notify users of start of node
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Loading Goal State");
-    
-    // Convert Angles to Quaterion
-    tf2::Quaternion quat(request->quat_x, request->quat_y, request->quat_z, request->quat_w);
-            
+
     // Create PoseStamped Msg
     geometry_msgs::msg::PoseStamped pose_msg;
     pose_msg.header.frame_id = "/odom";
-    pose_msg.pose.position.x = request->pos_x;
-    pose_msg.pose.position.y = request->pos_y;
-    pose_msg.pose.position.z = request->pos_z;
-    pose_msg.pose.orientation.x = quat.getX();
-    pose_msg.pose.orientation.y = quat.getY();
-    pose_msg.pose.orientation.z = quat.getZ();
-    pose_msg.pose.orientation.w = quat.getW();
+    pose_msg.pose.position.x = goal_state[0];
+    pose_msg.pose.position.y = goal_state[1];
+    pose_msg.pose.position.z = goal_state[2];
+    pose_msg.pose.orientation.x = goal_state[3];
+    pose_msg.pose.orientation.y = goal_state[4];
+    pose_msg.pose.orientation.z = goal_state[5];
+    pose_msg.pose.orientation.w = goal_state[6];
 
     // Create Publish Goal State
     mGoalStatePub->publish(pose_msg);  
-    response->success = true;
   }
   
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mMapCloudPub;
@@ -124,6 +112,9 @@ private:
   rclcpp::Service<ans_msgs::srv::FilePath>::SharedPtr nav_map_srv;
   rclcpp::Service<ans_msgs::srv::FilePath>::SharedPtr occ_map_srv;
   rclcpp::Service<ans_msgs::srv::Pose>::SharedPtr gs_srv;
+  std::string occ_map;
+  std::string nav_map;
+  std::vector<double> goal_state;
 };
 
 int main(int argc, char *argv[]) {
