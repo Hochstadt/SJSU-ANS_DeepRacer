@@ -5,6 +5,8 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Pose
+
+from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 
@@ -23,13 +25,26 @@ class mapLoader(Node):
         super().__init__('map_loader')
         self.bMapLoaded = False
         map_file = 'na'
+        occ_file = 'na'
+        goal_state = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
         #Expecting this to be the full path to the map file. If na will search
         #the current directory for one
         self.declare_parameter('map_file', map_file)
+        #Only add this if needed....
+        #self.declare_parameter('occ_file', occ_file)
+
+        self.declare_parameter('goal_state', goal_state)
         self.map_publisher = self.create_publisher(PointCloud2, 
                                                    '/ans_services/map_pt_msg', 
                                                    10)
-        self.timer = self.create_timer(1, self.publishMap)
+        self.map_timer = self.create_timer(1, self.publishMap)
+
+        self.goal_publisher = self.create_publisher(PoseStamped, 
+                                                   '/ans_services/goal_state_msg', 
+                                                   10)
+        self.goal_timer = self.create_timer(1, self.publishGoalState)
+
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
                 history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
@@ -41,8 +56,15 @@ class mapLoader(Node):
                                                         self.pose_listener, 
                                                         qos_profile=qos_profile)
         
-        self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
+
+        self.debug_point_cloud = self.create_subscription(PointCloud2,
+                                                        '/localization/aligned_pt_cloud',
+                                                        self.pt_cloud_listener, 
+                                                        qos_profile=qos_profile)
         
+
+        self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
+        self.goal_state = self.get_parameter('goal_state').get_parameter_value().double_array_value
     def publishMap(self):
         #Check if this map file exists 
         if self.bMapLoaded == False:       
@@ -90,15 +112,7 @@ class mapLoader(Node):
             #Now attempt a publish
             self.get_logger().info('Sending Point Cloud To Car')
 
-            point_list = point_cloud2.read_points_list(pc)
-            pl_length = len(point_list)
-            point_array = np.empty((3, pl_length))
-            for i, p in enumerate(point_list):
-                point_array[0, i] = p.x
-                point_array[1,i] = p.y
-                point_array[2,i] = p.z
-            with open('tmpmap.pickle', 'wb') as handle:
-                    pickle.dump(point_array, handle)
+            
 
 
             while rclpy.ok() and self.bMapLoaded == False:        
@@ -106,6 +120,24 @@ class mapLoader(Node):
                 self.bMapLoaded = True
                 sleep(0.25)
         
+    def publishGoalState(self):
+            
+        
+        #Check if this map file exists 
+        my_header = Header()
+        my_header.stamp = self.get_clock().now().to_msg()
+        my_header.frame_id = 'goal_state'
+        my_pose = PoseStamped()
+        
+        my_pose.pose.position.x = self.goal_state[0]
+        my_pose.pose.position.y = self.goal_state[1]
+        my_pose.pose.position.z = self.goal_state[2]
+        my_pose.pose.orientation.x = self.goal_state[3]
+        my_pose.pose.orientation.y = self.goal_state[4]
+        my_pose.pose.orientation.z = self.goal_state[5]
+        my_pose.pose.orientation.w = self.goal_state[6]
+
+        self.goal_publisher.publish(my_pose)
 
     def pose_listener(self, msg):
         self.get_logger().info('Displaying the estimated pose')
@@ -114,6 +146,19 @@ class mapLoader(Node):
 
         self.get_logger().info('Position: <%.4f %.4f %.4f>' % (point.x, point.y, point.z))
         self.get_logger().info('Quaternion: <%.4f %.4f %.4f, %.4f>' % (quat.x, quat.y, quat.z, quat.w))
+
+    def pt_cloud_listener(self, msg):
+
+        self.get_logger().info('Saving Debug Aligned Map')
+        point_list = point_cloud2.read_points_list(msg)
+        pl_length = len(point_list)
+        point_array = np.empty((3, pl_length))
+        for i, p in enumerate(point_list):
+            point_array[0, i] = p.x
+            point_array[1,i] = p.y
+            point_array[2,i] = p.z
+        with open('debug_map.pickle', 'wb') as handle:
+                pickle.dump(point_array, handle)
 
 
             
