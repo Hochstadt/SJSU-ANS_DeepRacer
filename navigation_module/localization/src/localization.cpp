@@ -94,6 +94,8 @@ class localization : public rclcpp::Node
             //Check if we received the map before doign this...
             if(receivedMap == true)
             {            
+
+              RCLCPP_INFO(this->get_logger(), "Initializing ICP");
               // Initialize variables to store PCL transformation
               pcl::PCLPointCloud2 tmpLidar;
               pcl::PointCloud<pcl::PointXYZ>::Ptr LidarPtCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -111,8 +113,13 @@ class localization : public rclcpp::Node
               icp.setInputSource(LidarPtCloud);
               icp.setInputTarget(envMap);
               pcl::PointCloud<pcl::PointXYZ> unused;
+              RCLCPP_INFO(this->get_logger(), "Running ICP");
               icp.align(unused);
-              
+              if(icp.hasConverged() == true){
+                RCLCPP_INFO(this->get_logger(), "ICP Converged");
+              } else {
+                RCLCPP_INFO(this->get_logger(), "ICP NOT Converged");
+              }
               // Get Pose Estimate
               const Eigen::Matrix4f T = icp.getFinalTransformation();
               
@@ -128,6 +135,7 @@ class localization : public rclcpp::Node
               ros_pose.header.frame_id = "/odom";
               ros_pose.header.stamp.sec = _msg->header.stamp.sec;
               ros_pose.header.stamp.nanosec = _msg->header.stamp.nanosec;
+              RCLCPP_INFO(this->get_logger(), "Returning Result");
               mPoseEstPub->publish(ros_pose);                          
           } 
   	}
