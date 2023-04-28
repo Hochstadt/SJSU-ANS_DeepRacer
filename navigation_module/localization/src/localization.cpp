@@ -11,10 +11,13 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <pcl/registration/gicp.h>
+#include <pcl/registration/icp.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <pcl/common/transforms.h>
 
+using pcl::IterativeClosestPoint;
 using pcl::GeneralizedIterativeClosestPoint;
 using pcl::PointCloud;
 using pcl::PointXYZ;
@@ -28,12 +31,12 @@ class localization : public rclcpp::Node
         localization() : Node("localization")
         {
             // Notify users of start of node
-             RCLCPP_INFO(this->get_logger(), "Starting localization node");
+            RCLCPP_INFO(this->get_logger(), "Starting localization node");
             
             // Set QoS parameters
             auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
             qos.best_effort();
-            
+                       
             // Create Map Load message subscriber
             mMapSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
                 "/ans_services/map_pt_msg", 10, 
@@ -46,20 +49,61 @@ class localization : public rclcpp::Node
                 std::bind(&localization::estimate_pose, 
                 this, std::placeholders::_1));
                 
-           // Create Goal State message subscriber
+            // Create Goal State message subscriber
             mGoalStateSub = this->create_subscription<geometry_msgs::msg::PoseStamped>(
                 "/ans_services/goal_state_msg", qos, 
                 std::bind(&localization::store_goal_state, 
                 this, std::placeholders::_1));
                 
-           // Create Localization Pose Estimate publisher
-           mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization/pose", qos);
+            // Create Localization Pose Estimate publisher
+            mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization/pose", qos);
            
-           // Create atGoalState publisher
-           mAtGoalStatePub = this->create_publisher<std_msgs::msg::Bool>("/localization/at_goal_state_msg", qos);
+            // Create atGoalState publisher
+            mAtGoalStatePub = this->create_publisher<std_msgs::msg::Bool>("/localization/at_goal_state_msg", qos);
            
-           // Create solutionFound publisher
-           mSolutionFoundPub = this->create_publisher<std_msgs::msg::Bool>("/localization/solution_found", qos);
+            // Create solutionFound publisher
+            mSolutionFoundPub = this->create_publisher<std_msgs::msg::Bool>("/localization/solution_found", qos);
+           
+            // Create LiDAR point cloud publisher
+            mAlignedLidarPtCloudPub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/localization/aligned_lidar_pt_msg", qos);
+        
+            // Declare input variables
+            this->declare_parameter<float>("icp_fit_thresh");
+            this->declare_parameter<float>("gicp_fit_thresh");
+            this->declare_parameter<float>("icp_trans_eps");
+            this->declare_parameter<float>("icp_max_corr_dist");
+            this->declare_parameter<int>("icp_max_iters");
+            this->declare_parameter<float>("min_search_x");
+            this->declare_parameter<float>("max_search_x");
+            this->declare_parameter<int>("delta_search_x");
+            this->declare_parameter<float>("min_search_y");
+            this->declare_parameter<float>("max_search_y");
+            this->declare_parameter<int>("delta_search_y");
+            this->declare_parameter<int>("delta_search_ang");
+            this->declare_parameter<float>("rotationCheckThreshold");
+            this->declare_parameter<float>("positionCheckThrehsold");
+
+            // Declare set input variables
+            icp_fit_thresh = this->get_parameter("icp_fit_thresh").as_double();
+            gicp_fit_thresh = this->get_parameter("gicp_fit_thresh").as_double();
+            min_search_x = this->get_parameter("min_search_x").as_double();
+            max_search_x = this->get_parameter("max_search_x").as_double();
+            delta_search_x = this->get_parameter("delta_search_x").as_int();
+            min_search_y = this->get_parameter("min_search_y").as_double();
+            max_search_y = this->get_parameter("max_search_y").as_double();
+            delta_search_y = this->get_parameter("delta_search_y").as_int();
+            delta_search_ang = this->get_parameter("delta_search_ang").as_int();
+            rotationCheckThreshold = this->get_parameter("rotationCheckThreshold").as_double();
+            positionCheckThrehsold = this->get_parameter("positionCheckThrehsold").as_double();
+
+            // Configure ICP and GICP
+            icp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
+  	        icp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
+            icp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
+            gicp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
+  	        gicp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
+            gicp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
+        
         }
 
     private:
@@ -72,9 +116,10 @@ class localization : public rclcpp::Node
             
             // Convert LiDAR scan to PCL point cloud
             pcl_conversions::toPCL(*_msg, envMapPCL2);
-  	}
+            //pcl::fromROSMsg(*_msg, *envMapPCL2);    
+  	    }
   	
-  	void store_goal_state(const geometry_msgs::msg::PoseStamped::SharedPtr _msg)
+  	    void store_goal_state(const geometry_msgs::msg::PoseStamped::SharedPtr _msg)
         {
                    
             // Inform that message was received
@@ -82,50 +127,80 @@ class localization : public rclcpp::Node
             
             // Convert LiDAR scan to PCL point cloud
             tf2::fromMsg(_msg->pose, goalState);
-  	}
+  	    }
         
         void estimate_pose(const sensor_msgs::msg::PointCloud2::SharedPtr _msg)
         {
+            // Verify map is loaded
+            if (envMapPCL2.width > 0)
+                {
+                // Initialize variables to store PCL objects
+                pcl::PCLPointCloud2 tmpLidar;
+                pcl::PointCloud<pcl::PointXYZ>::Ptr lidarScan(new pcl::PointCloud<pcl::PointXYZ>);
+                pcl::PointCloud<pcl::PointXYZ>::Ptr lidarScanTransformed(new pcl::PointCloud<pcl::PointXYZ>);
+                pcl::PointCloud<pcl::PointXYZ>::Ptr envMap(new pcl::PointCloud<pcl::PointXYZ>); 
+                pcl::PointCloud<pcl::PointXYZ> aligned;
+                
+                // Convert LiDAR scan to PCL point cloud
+                //pcl_conversions::toPCL(*_msg, tmpLidar);
+                pcl::fromROSMsg(*_msg, *lidarScan);    
+                
+                // Convert Environment Map to PCL point cloud
+                pcl::fromPCLPointCloud2(envMapPCL2, *envMap); 
+
+                // Perform pose search if no a priori knowledge
+                if(solutionFound==false) {
+                    currentState = searchForInitialPose(lidarScan, lidarScanTransformed, aligned, envMap);
+                }
+                //Perform ICP with previous pose infromation
+                else {
+                    // Transform point cloud based on a priori pose
+                    pcl::transformPointCloud(*lidarScan, *lidarScanTransformed, currentState); 
+                    
+                    // Attempt align LiDAR scan and map
+                    gicp.setInputSource(lidarScanTransformed);
+                    gicp.setInputTarget(envMap);
+                    gicp.align(aligned);
+
+                    // Store and confirm pose if quality solution produced
+                    if (gicp.getFitnessScore() < gicp_fit_thresh) 
+                    {
+                    // Get Pose Estimate
+                    currentState = gicp.getFinalTransformation()*currentState;
+                    
+                    solutionFound = true;
+                    }
+                    // Indicate no knowledge if low quality solution produced
+                    else
+                    {
+                    solutionFound = false;  
+                    currentState = Eigen::Matrix4f::Identity();
+                    }
+                }
+
+                // Produce aligned point cloud mesage
+                auto AlignedMsg = sensor_msgs::msg::PointCloud2();
+                pcl::toROSMsg(aligned, AlignedMsg);
+                AlignedMsg.header.frame_id ="odom";
+                mAlignedLidarPtCloudPub->publish(AlignedMsg);
+                            
+                // Check Goal State
+                at_goal_state(currentState);
+                
+                // Convert Pose to PoseStamped msg
+                geometry_msgs::msg::PoseStamped ros_pose;
+                ros_pose = localization::convert_pose_to_msg(currentState);
+                
+                // Publish Pose
+                ros_pose.header.frame_id = "odom";
+                ros_pose.header.stamp.sec = _msg->header.stamp.sec;
+                ros_pose.header.stamp.nanosec = _msg->header.stamp.nanosec;
+                mPoseEstPub->publish(ros_pose);                          
             
-            // Initialize variables to store PCL transformation
-            pcl::PCLPointCloud2 tmpLidar;
-            pcl::PointCloud<pcl::PointXYZ>::Ptr LidarPtCloud(new pcl::PointCloud<pcl::PointXYZ>);
-            pcl::PointCloud<pcl::PointXYZ>::Ptr envMap(new pcl::PointCloud<pcl::PointXYZ>); 
-            
-            // Convert LiDAR scan to PCL point cloud
-            pcl_conversions::toPCL(*_msg, tmpLidar);
-            pcl::fromPCLPointCloud2(tmpLidar, *LidarPtCloud);    
-            
-            // Convert Environment Map to PCL point cloud
-            pcl::fromPCLPointCloud2(envMapPCL2, *envMap);            
-            
-            // Perform ICP
-            GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-            icp.setInputSource(LidarPtCloud);
-            icp.setInputTarget(envMap);
-            pcl::PointCloud<pcl::PointXYZ> unused;
-            icp.align(unused);
-            
-            // Get Pose Estimate
-            const Eigen::Matrix4f T = icp.getFinalTransformation();
-            
-                        
-            // Check Goal State
-            at_goal_state(T);
-            
-            // Convert Pose to PoseStamped msg
-            geometry_msgs::msg::PoseStamped ros_pose;
-            ros_pose = localization::convert_pose_to_msg(T);
-            
-            // Publish Pose
-            ros_pose.header.frame_id = "/odom";
-            ros_pose.header.stamp.sec = _msg->header.stamp.sec;
-            ros_pose.header.stamp.nanosec = _msg->header.stamp.nanosec;
-            mPoseEstPub->publish(ros_pose);                          
-           
-  	}
+            }
+        }
   	
-  	inline geometry_msgs::msg::PoseStamped convert_pose_to_msg(Eigen::Matrix4f T)
+  	    inline geometry_msgs::msg::PoseStamped convert_pose_to_msg(Eigen::Matrix4f T)
         {
                    
             // Convert DCM to Angles
@@ -148,10 +223,10 @@ class localization : public rclcpp::Node
             pose_msg.pose.orientation.w = quat.getW();
             
             return pose_msg;
-  	}
+  	    }
   	
-  	void at_goal_state(Eigen::Matrix4f pose)
-  	{
+  	    void at_goal_state(Eigen::Matrix4f pose)
+  	    {
             // Transform goal state to Eigen Matrix
             Eigen::Matrix4d Tgoal_state;
             Tgoal_state = goalState.matrix();
@@ -163,7 +238,7 @@ class localization : public rclcpp::Node
             std_msgs::msg::Bool atGoalStateMsg;
             
             // Check if current state within threshold of goal
-            if (abs(Tgoal_current(0,1)) < rotationThreshold && sqrt(pow(Tgoal_current(0,3), 2) + pow(Tgoal_current(1,3), 2) + pow(Tgoal_current(2,3), 2)) < positionThrehsold) {
+            if (abs(Tgoal_current(0,1)) < rotationCheckThreshold && sqrt(pow(Tgoal_current(0,3), 2) + pow(Tgoal_current(1,3), 2) + pow(Tgoal_current(2,3), 2)) < positionCheckThrehsold) {
             	// set goal state flag
             	atGoalStateMsg.data = true;  
             	
@@ -177,19 +252,100 @@ class localization : public rclcpp::Node
             mAtGoalStatePub->publish(atGoalStateMsg);
         }      
         
+        Eigen::Matrix4f searchForInitialPose(pcl::PointCloud<pcl::PointXYZ>::Ptr scan, pcl::PointCloud<pcl::PointXYZ>::Ptr scanTransformed, pcl::PointCloud<pcl::PointXYZ> aligned, pcl::PointCloud<pcl::PointXYZ>::Ptr map)
+        {
+       
+            // Initialize variables
+            float fitScore = std::numeric_limits<float>::max();
+            Eigen::Matrix4f pose;
+
+            // Loop through each position and angle combination
+       	    for (int x=0; x < delta_search_x; x++){
+                for (int y=0; y < delta_search_y; y++){
+                    for (int theta=0; theta < delta_search_ang; theta++){
+            		
+                        // Define pose conditions
+            		    float pos_x = min_search_x + x * ((max_search_x - min_search_x) / delta_search_x);
+            		    float pos_y = min_search_y + y * ((max_search_y - min_search_y) / delta_search_y);
+            		    float ang   = theta * (3.14159265358979323846 / delta_search_ang);
+
+                        // Construct initial pose guess
+            		    Eigen::Matrix4f initialEst = Eigen::Matrix4f::Identity();
+            		    initialEst(0,0) = cos(ang);
+            		    initialEst(0,1) = -sin(ang);
+            		    initialEst(1,0) = sin(ang);
+            		    initialEst(1,1) = cos(ang);
+            		    initialEst(0,3) = pos_x;
+            		    initialEst(1,3) = pos_y;
+            				
+            	        // Transform point cloud based on a priori pose
+            		    pcl::transformPointCloud(*scan, *scanTransformed, initialEst);
+            			
+            		    // Attempt alignment with ICP	
+            		    icp.setInputSource(scanTransformed);
+            		    icp.setInputTarget(map);
+             		    icp.align(aligned);
+            			
+            		    // Save pose estimate if lowest fitness seen
+            		    float FitnessScore = icp.getFitnessScore();
+                        if (FitnessScore < fitScore)
+            		    {
+            			    // Get Pose Estimate
+            			    pose = icp.getFinalTransformation()*initialEst;
+            			    fitScore = FitnessScore;
+				        }
+			        }
+		        }
+	        }
+
+            // Save pose if fitness below threshold
+            if (fitScore < icp_fit_thresh){
+                solutionFound = true;
+                return pose;
+            }
+	
+            // Return nothing if no good solution found
+            solutionFound = false;
+	        return Eigen::Matrix4f::Identity();
+	    }
+        
+        // Define Subscription variables
         rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mMapSub;
         rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mLidarPtCloudSub;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mGoalStateSub;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr mPoseEstPub;
+
+        // Define Publisher variables
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mAtGoalStatePub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mSolutionFoundPub;
-	pcl::PCLPointCloud2 envMapPCL2;
-	Eigen::Affine3d goalState;
-	bool localizationType;
-	bool solutionFound;
-	bool atGoalState;
-	double rotationThreshold = 0.017;
-	double positionThrehsold = 0.010;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mAlignedLidarPtCloudPub;
+
+        // Define State Varaibles
+	    pcl::PCLPointCloud2 envMapPCL2;
+	    Eigen::Affine3d goalState;
+	    bool solutionFound = false;
+	    bool atGoalState = false;
+        Eigen::Matrix4f currentState = Eigen::Matrix4f::Identity();
+
+        // Define ICP and GICP variables
+        IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+        GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> gicp;
+        float icp_trans_eps;
+        float icp_max_corr_dist;
+        int icp_max_iters;
+
+        // Define configurable parameters
+	    float rotationCheckThreshold;
+	    float positionCheckThrehsold;
+        float icp_fit_thresh;
+        float gicp_fit_thresh;
+        int min_search_x;
+        float max_search_x;
+        int delta_search_x;
+        float min_search_y;
+        float max_search_y;
+        int delta_search_y;
+        int delta_search_ang;
 };
 
 int main(int argc, char ** argv) {
