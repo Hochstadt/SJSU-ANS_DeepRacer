@@ -1,4 +1,14 @@
 #!/usr/bin/env bash 
+#Not super necessary for now
+#Check if user wants to remove current build stuff to do a re-build
+#if [ "$1" = "rebuild" ]
+#then
+#  bRebuild=1
+#else
+#  bRebuild=0
+#fi
+
+
 
 CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"

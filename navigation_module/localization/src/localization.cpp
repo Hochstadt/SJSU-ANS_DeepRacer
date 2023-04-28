@@ -13,10 +13,12 @@
 #include <pcl/registration/gicp.h>
 #include <pcl/registration/icp.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+
 //#include <tf2_eigen/tf2_eigen.hpp>
-#include <tf2_eigen/tf2_eigen.h>
 //#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 #include <pcl/common/transforms.h>
 #include "ros_user_macros.h"
 
@@ -72,50 +74,80 @@ class localization : public rclcpp::Node
         
             // Declare input variables
             #if ROS_USER_VERSION == ROS_HUMBLE
-            this->declare_parameter<float>("icp_fit_thresh");
-            this->declare_parameter<float>("gicp_fit_thresh");
-            this->declare_parameter<float>("icp_trans_eps");
-            this->declare_parameter<float>("icp_max_corr_dist");
-            this->declare_parameter<int>("icp_max_iters");
-            this->declare_parameter<float>("min_search_x");
-            this->declare_parameter<float>("max_search_x");
-            this->declare_parameter<int>("delta_search_x");
-            this->declare_parameter<float>("min_search_y");
-            this->declare_parameter<float>("max_search_y");
-            this->declare_parameter<int>("delta_search_y");
-            this->declare_parameter<int>("delta_search_ang");
-            this->declare_parameter<float>("rotationCheckThreshold");
-            this->declare_parameter<float>("positionCheckThrehsold");
-            
-            
+                this->declare_parameter<float>("icp_fit_thresh");
+                this->declare_parameter<float>("gicp_fit_thresh");
+                this->declare_parameter<float>("icp_trans_eps");
+                this->declare_parameter<float>("icp_max_corr_dist");
+                this->declare_parameter<int>("icp_max_iters");
+                this->declare_parameter<float>("min_search_x");
+                this->declare_parameter<float>("max_search_x");
+                this->declare_parameter<int>("delta_search_x");
+                this->declare_parameter<float>("min_search_y");
+                this->declare_parameter<float>("max_search_y");
+                this->declare_parameter<int>("delta_search_y");
+                this->declare_parameter<int>("delta_search_ang");
+                this->declare_parameter<float>("rotationCheckThreshold");
+                this->declare_parameter<float>("positionCheckThrehsold");
 
-            // Declare set input variables
-            icp_fit_thresh = this->get_parameter("icp_fit_thresh").as_double();
-            gicp_fit_thresh = this->get_parameter("gicp_fit_thresh").as_double();
-            min_search_x = this->get_parameter("min_search_x").as_double();
-            max_search_x = this->get_parameter("max_search_x").as_double();
-            delta_search_x = this->get_parameter("delta_search_x").as_int();
-            min_search_y = this->get_parameter("min_search_y").as_double();
-            max_search_y = this->get_parameter("max_search_y").as_double();
-            delta_search_y = this->get_parameter("delta_search_y").as_int();
-            delta_search_ang = this->get_parameter("delta_search_ang").as_int();
-            rotationCheckThreshold = this->get_parameter("rotationCheckThreshold").as_double();
-            positionCheckThrehsold = this->get_parameter("positionCheckThrehsold").as_double();
+                // Declare set input variables
+                icp_fit_thresh = this->get_parameter("icp_fit_thresh").as_double();
+                gicp_fit_thresh = this->get_parameter("gicp_fit_thresh").as_double();
+                min_search_x = this->get_parameter("min_search_x").as_double();
+                max_search_x = this->get_parameter("max_search_x").as_double();
+                delta_search_x = this->get_parameter("delta_search_x").as_int();
+                min_search_y = this->get_parameter("min_search_y").as_double();
+                max_search_y = this->get_parameter("max_search_y").as_double();
+                delta_search_y = this->get_parameter("delta_search_y").as_int();
+                delta_search_ang = this->get_parameter("delta_search_ang").as_int();
+                rotationCheckThreshold = this->get_parameter("rotationCheckThreshold").as_double();
+                positionCheckThrehsold = this->get_parameter("positionCheckThrehsold").as_double();
 
-            // Configure ICP and GICP
-            icp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
-  	        icp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
-            icp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
-            gicp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
-  	        gicp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
-            gicp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
-        #elif ROS_USER_VERSION == ROS_FOXY
+                // Configure ICP and GICP
+                icp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
+                icp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
+                icp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
+                gicp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
+                gicp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
+                gicp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
+            #elif ROS_USER_VERSION == ROS_FOXY
+                declare_parameter("icp_fit_thresh");
+                declare_parameter("gicp_fit_thresh");
+                declare_parameter("icp_trans_eps");
+                declare_parameter("icp_max_corr_dist");
+                declare_parameter("icp_max_iters");
+                declare_parameter("min_search_x");
+                declare_parameter("max_search_x");
+                declare_parameter("delta_search_x");
+                declare_parameter("min_search_y");
+                declare_parameter("max_search_y");
+                declare_parameter("delta_search_y");
+                declare_parameter("delta_search_ang");
+                declare_parameter("rotationCheckThreshold");
+                declare_parameter("positionCheckThrehsold");
 
+                // Declare set input variables
+                
+                get_parameter("icp_fit_thresh", icp_fit_thresh);
+                get_parameter("gicp_fit_thresh", gicp_fit_thresh);
+                get_parameter("min_search_x", min_search_x);
+                get_parameter("max_search_x", max_search_x);
+                get_parameter("delta_search_x", delta_search_x);
+                get_parameter("min_search_y", min_search_y);
+                get_parameter("max_search_y", max_search_y);
+                get_parameter("delta_search_y", delta_search_y);
+                get_parameter("delta_search_ang", delta_search_ang);
+                get_parameter("rotationCheckThreshold", rotationCheckThreshold);
+                get_parameter("positionCheckThrehsold", positionCheckThrehsold);
 
+                // Configure ICP and GICP
+                icp.setTransformationEpsilon(get_parameter("icp_trans_eps").as_double());
+                icp.setMaxCorrespondenceDistance(get_parameter("icp_max_corr_dist").as_double());
+                icp.setMaximumIterations(get_parameter("icp_max_iters").as_int());
+                gicp.setTransformationEpsilon(get_parameter("icp_trans_eps").as_double());
+                gicp.setMaxCorrespondenceDistance(get_parameter("icp_max_corr_dist").as_double());
+                gicp.setMaximumIterations(get_parameter("icp_max_iters").as_int());
+            #endif
 
-
-
-#
         }
 
     private:
