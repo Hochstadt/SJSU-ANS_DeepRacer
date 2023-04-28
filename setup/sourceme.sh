@@ -219,7 +219,7 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
-  #MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
+  MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
   ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
   ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
   #Rviz interface
@@ -270,6 +270,19 @@ then
     echo "ans_server already built"
   fi
   source $ANS_SERVER/install/setup.bash
+
+  #map_loader
+  ##########################################33
+    
+  cd $CUR_PATH
+  if [ ! -d "$MAP_LOADER/build" ]
+  then
+    echo "building map loader"
+    cd $MAP_LOADER && colcon build
+  else
+    echo "map loader already built"
+  fi
+  source $MAP_LOADER/install/local_setup.bash
   
 else
   echo "'$1' is not an understood argument, try one of the following"
