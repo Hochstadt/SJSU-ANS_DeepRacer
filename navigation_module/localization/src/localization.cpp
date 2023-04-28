@@ -193,11 +193,11 @@ class localization : public rclcpp::Node
 
                 // Perform pose search if no a priori knowledge
                 if(solutionFound==false) {
-                    RCLCPP_INFO(this->get_logger(), "Running Global ICP");
+                    RCLCPP_INFO(this->get_logger(), "Running Global ICP as no solution has been found");
                     currentState = searchForInitialPose(lidarScan, lidarScanTransformed, aligned, envMap);
                 } else {
                     //Perform ICP with previous pose infromation
-
+                    RCLCPP_INFO(this->get_logger(), "Running Local ICP as we have a solution");
                     // Transform point cloud based on a priori pose
                     pcl::transformPointCloud(*lidarScan, *lidarScanTransformed, currentState); 
                     
@@ -300,7 +300,7 @@ class localization : public rclcpp::Node
             mAtGoalStatePub->publish(atGoalStateMsg);
         }      
         
-        Eigen::Matrix4f searchForInitialPose(pcl::PointCloud<pcl::PointXYZ>::Ptr scan, pcl::PointCloud<pcl::PointXYZ>::Ptr scanTransformed, pcl::PointCloud<pcl::PointXYZ> aligned, pcl::PointCloud<pcl::PointXYZ>::Ptr map)
+        Eigen::Matrix4f searchForInitialPose(pcl::PointCloud<pcl::PointXYZ>::Ptr scan, pcl::PointCloud<pcl::PointXYZ>::Ptr scanTransformed, pcl::PointCloud<pcl::PointXYZ> & aligned, pcl::PointCloud<pcl::PointXYZ>::Ptr map)
         {
        
             // Initialize variables
@@ -347,6 +347,8 @@ class localization : public rclcpp::Node
 	        }
 
             // Save pose if fitness below threshold
+            RCLCPP_INFO(this->get_logger(), "Fitness Score: %.4f",fitScore);
+            RCLCPP_INFO(this->get_logger(), "Fitness Threshold: %.4f",icp_fit_thresh);
             if (fitScore < icp_fit_thresh){
                 solutionFound = true;
                 return pose;
