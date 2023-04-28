@@ -33,7 +33,7 @@ class localization : public rclcpp::Node
              RCLCPP_INFO(this->get_logger(), "Starting localization node");
             
             // Set QoS parameters
-            auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
+            auto qos = rclcpp::QoS(rclcpp::KeepLast(5));
             qos.best_effort();
             
             // Create Map Load message subscriber
@@ -58,6 +58,7 @@ class localization : public rclcpp::Node
                 
            // Create Localization Pose Estimate publisher
            mPoseEstPub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization/pose", qos);
+           mPtCloudEstPub = this->create_publisher<sensor_msgs::msg::PointCloud2>("localization/aligned_pt_cloud", qos);
            
            // Create atGoalState publisher
            mAtGoalStatePub = this->create_publisher<std_msgs::msg::Bool>("/localization/at_goal_state_msg", qos);
@@ -103,26 +104,40 @@ class localization : public rclcpp::Node
               
               // Convert LiDAR scan to PCL point cloud
               pcl_conversions::toPCL(*_msg, tmpLidar);
+              //tmpLidar becomes a PCLPointCloud2 item
+
               pcl::fromPCLPointCloud2(tmpLidar, *LidarPtCloud);    
+              //then you turn that into a pclPointCloud PointXYZ 
               
               // Convert Environment Map to PCL point cloud
               pcl::fromPCLPointCloud2(envMapPCL2, *envMap);            
-              
+               
               // Perform ICP
               GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
               icp.setInputSource(LidarPtCloud);
               icp.setInputTarget(envMap);
               pcl::PointCloud<pcl::PointXYZ> unused;
               RCLCPP_INFO(this->get_logger(), "Running ICP");
+
+
+              //icp.setMaximumOptimizerIterations(1);
               icp.align(unused);
+              //Unused is that PCL<PCL::POINTXYZ>
+              //toROSMsg (const pcl::PointCloud< T > &pcl_cloud, sensor_msgs::PointCloud2 &cloud)
+              sensor_msgs::msg::PointCloud2 toReturn;
+              pcl::toROSMsg(unused,toReturn); 
               if(icp.hasConverged() == true){
                 RCLCPP_INFO(this->get_logger(), "ICP Converged");
               } else {
                 RCLCPP_INFO(this->get_logger(), "ICP NOT Converged");
               }
+              RCLCPP_INFO(this->get_logger(), "returning point cloud");
+              mPtCloudEstPub->publish(toReturn);
               // Get Pose Estimate
               const Eigen::Matrix4f T = icp.getFinalTransformation();
               
+
+              //pcl::fromPointCloud2PCL( 
                           
               // Check Goal State
               at_goal_state(T);
@@ -198,6 +213,7 @@ class localization : public rclcpp::Node
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr mPoseEstPub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mAtGoalStatePub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mSolutionFoundPub;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mPtCloudEstPub;
 	pcl::PCLPointCloud2 envMapPCL2;
 	Eigen::Affine3d goalState;
 	bool localizationType;
