@@ -126,18 +126,17 @@ class localization : public rclcpp::Node
                 declare_parameter("positionCheckThrehsold");
 
                 // Declare set input variables
-                
-                get_parameter("icp_fit_thresh", icp_fit_thresh);
-                get_parameter("gicp_fit_thresh", gicp_fit_thresh);
-                get_parameter("min_search_x", min_search_x);
-                get_parameter("max_search_x", max_search_x);
-                get_parameter("delta_search_x", delta_search_x);
-                get_parameter("min_search_y", min_search_y);
-                get_parameter("max_search_y", max_search_y);
-                get_parameter("delta_search_y", delta_search_y);
-                get_parameter("delta_search_ang", delta_search_ang);
-                get_parameter("rotationCheckThreshold", rotationCheckThreshold);
-                get_parameter("positionCheckThrehsold", positionCheckThrehsold);
+                icp_fit_thresh = this->get_parameter("icp_fit_thresh").as_double();
+                gicp_fit_thresh = this->get_parameter("gicp_fit_thresh").as_double();
+                min_search_x = this->get_parameter("min_search_x").as_double();
+                max_search_x = this->get_parameter("max_search_x").as_double();
+                delta_search_x = this->get_parameter("delta_search_x").as_int();
+                min_search_y = this->get_parameter("min_search_y").as_double();
+                max_search_y = this->get_parameter("max_search_y").as_double();
+                delta_search_y = this->get_parameter("delta_search_y").as_int();
+                delta_search_ang = this->get_parameter("delta_search_ang").as_int();
+                rotationCheckThreshold = this->get_parameter("rotationCheckThreshold").as_double();
+                positionCheckThrehsold = this->get_parameter("positionCheckThrehsold").as_double();
 
                 // Configure ICP and GICP
                 icp.setTransformationEpsilon(get_parameter("icp_trans_eps").as_double());
