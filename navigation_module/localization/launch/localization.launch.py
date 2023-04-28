@@ -13,8 +13,8 @@ def generate_launch_description():
         executable='localization',
         output='screen',
         parameters=[
-                {'icp_fit_thresh': 0.01,
-                 'gicp_fit_thresh': 0.01,
+                {'icp_fit_thresh': 0.025,
+                 'gicp_fit_thresh': 0.025,
                  'icp_trans_eps': 1e-8,
                  'icp_max_corr_dist': 1000.0,
                  'icp_max_iters': 100,
