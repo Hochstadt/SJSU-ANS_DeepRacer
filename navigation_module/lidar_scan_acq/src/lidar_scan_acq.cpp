@@ -50,7 +50,7 @@ class lidar_scan_acq : public rclcpp::Node
             // Convert scan to point cloud msg
             auto lidarScanMsg = sensor_msgs::msg::PointCloud2();
             projector.projectLaser(*_msg, lidarScanMsg, maxRange_, laser_geometry::channel_option::Intensity);
-            lidarScanMsg.header.frame_id ="laser_frame";
+            lidarScanMsg.header.frame_id ="laser";
             
             // Publish LiDAR scan point cloud
             mLidarPtCloudPub->publish(lidarScanMsg);  
