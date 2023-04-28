@@ -18,6 +18,7 @@
 //#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <pcl/common/transforms.h>
+#include "ros_user_macros.h"
 
 using pcl::IterativeClosestPoint;
 using pcl::GeneralizedIterativeClosestPoint;
@@ -44,8 +45,6 @@ class localization : public rclcpp::Node
                 "/ans_services/map_pt_msg", 10, 
                 std::bind(&localization::store_map, 
                 this, std::placeholders::_1));
-            //create bool for it too
-            receivedMap = false;
                 
             // Create LiDAR scan message subscriber
             mLidarPtCloudSub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -72,6 +71,7 @@ class localization : public rclcpp::Node
             mAlignedLidarPtCloudPub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/localization/aligned_lidar_pt_msg", qos);
         
             // Declare input variables
+            #if ROS_USER_VERSION == ROS_HUMBLE
             this->declare_parameter<float>("icp_fit_thresh");
             this->declare_parameter<float>("gicp_fit_thresh");
             this->declare_parameter<float>("icp_trans_eps");
@@ -86,6 +86,8 @@ class localization : public rclcpp::Node
             this->declare_parameter<int>("delta_search_ang");
             this->declare_parameter<float>("rotationCheckThreshold");
             this->declare_parameter<float>("positionCheckThrehsold");
+            
+            
 
             // Declare set input variables
             icp_fit_thresh = this->get_parameter("icp_fit_thresh").as_double();
@@ -107,7 +109,13 @@ class localization : public rclcpp::Node
             gicp.setTransformationEpsilon(this->get_parameter("icp_trans_eps").as_double());
   	        gicp.setMaxCorrespondenceDistance(this->get_parameter("icp_max_corr_dist").as_double());
             gicp.setMaximumIterations(this->get_parameter("icp_max_iters").as_int());
-        
+        #elif ROS_USER_VERSION == ROS_FOXY
+
+
+
+
+
+#
         }
 
     private:

@@ -22,6 +22,10 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(laser_geometry REQUIRED)
 
+#Add the user macros
+get_filename_component(macro_directory "${CMAKE_CURRENT_SOURCE_DIR}/../../setup" ABSOLUTE)
+target_include_directories(localization PRIVATE ${macro_directory})
+
 set(dependencies
   pcl_conversions
   rclcpp
@@ -35,7 +39,7 @@ set(dependencies
   PCL
 )
 
-add_executable(localization src/localization.cpp)
+add_executable(localization src/localization.cpp ${macro_directory}/ros_user_macros.h)
 target_link_libraries(localization ${PCL_LIBRARIES})
 
 ament_target_dependencies(localization ${dependencies} geometry_msgs tf2_geometry_msgs tf2_eigen)
