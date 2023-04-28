@@ -165,16 +165,15 @@ class localization : public rclcpp::Node
                     // Store and confirm pose if quality solution produced
                     if (gicp.getFitnessScore() < gicp_fit_thresh) 
                     {
-                    // Get Pose Estimate
-                    currentState = gicp.getFinalTransformation()*currentState;
-                    
-                    solutionFound = true;
+                        // Get Pose Estimate
+                        currentState = gicp.getFinalTransformation()*currentState;
+                        solutionFound = true;
                     }
                     // Indicate no knowledge if low quality solution produced
                     else
                     {
-                    solutionFound = false;  
-                    currentState = Eigen::Matrix4f::Identity();
+                        solutionFound = false;  
+                        currentState = Eigen::Matrix4f::Identity();
                     }
                 }
 
@@ -195,7 +194,12 @@ class localization : public rclcpp::Node
                 ros_pose.header.frame_id = "odom";
                 ros_pose.header.stamp.sec = _msg->header.stamp.sec;
                 ros_pose.header.stamp.nanosec = _msg->header.stamp.nanosec;
-                mPoseEstPub->publish(ros_pose);                          
+                mPoseEstPub->publish(ros_pose);
+
+                // Publish Solution State
+                std_msgs::msg::Bool solutionFoundMsg;
+                solutionFoundMsg.data = solutionFound;
+                mSolutionFoundPub->publish(solutionFoundMsg);              
             
             }
         }
