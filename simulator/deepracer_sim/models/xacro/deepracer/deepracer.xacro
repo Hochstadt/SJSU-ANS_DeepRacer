@@ -32,10 +32,10 @@ limitations under the License.
   <xacro:arg name="lidar_360_degree_min_angle" default="-3.14" />
   <xacro:arg name="lidar_360_degree_max_angle" default="3.14" />
   <xacro:arg name="lidar_360_degree_min_range" default="0.15" />
-  <xacro:arg name="lidar_360_degree_max_range" default="10.0" />
-  <xacro:arg name="lidar_360_degree_range_resolution" default="0.01" />
+  <xacro:arg name="lidar_360_degree_max_range" default="12.0" />
+  <xacro:arg name="lidar_360_degree_range_resolution" default="0.12" />
   <xacro:arg name="lidar_360_degree_noise_mean" default="0.0" />
-  <xacro:arg name="lidar_360_degree_noise_stddev" default="0.01" />
+  <xacro:arg name="lidar_360_degree_noise_stddev" default="0.1" />
 
   <!-- convert sensor type from arg to property -->
   <xacro:property name="sensor_type_val" value="$(arg sensor_type)" />
