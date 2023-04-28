@@ -53,4 +53,17 @@ limitations under the License.
         <kd  value="1.0" />
         <fdir1 value="1 0 0"/>
     </gazebo>
+    
+    <!-- add bit mask -->
+    <!-- there is no collision for single and stereo camera, so no need to disable them -->
+    <!-- apply bit mask for four wheels and shell -->
+    <xacro:configure_collide_bitmask link_name="left_rear_wheel" bitmask="$(arg agent_bitmask)" />
+    <xacro:configure_collide_bitmask link_name="right_rear_wheel" bitmask="$(arg agent_bitmask)" />
+    <xacro:configure_collide_bitmask link_name="left_front_wheel" bitmask="$(arg agent_bitmask)" />
+    <xacro:configure_collide_bitmask link_name="right_front_wheel" bitmask="$(arg agent_bitmask)" />
+    <xacro:configure_collide_bitmask link_name="shell" bitmask="$(arg agent_bitmask)" />
+    <!-- apply bit mask for lidar if using lidar sensor -->
+    <xacro:if value="${'lidar' in sensor_type_val}">
+        <xacro:configure_collide_bitmask link_name="laser" bitmask="$(arg agent_bitmask)" />
+    </xacro:if>
 </robot>
