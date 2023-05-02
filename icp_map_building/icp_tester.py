@@ -1,5 +1,5 @@
 #%%
-import open3d as o3d
+#import open3d as o3d
 import pyransac3d as pyrsc
 import pickle
 import sys
@@ -191,6 +191,7 @@ with open(fname, 'wb') as handle:
 
 
 #%% Now also use open3d to create the pcd file 
+
 pts = []
 for i in range(full_pc_map.shape[0]):
     x = full_pc_map[i, 0]
@@ -199,12 +200,13 @@ for i in range(full_pc_map.shape[0]):
     pt3D = np.array([x, y, z])
     pts.append(pt3D)
 pts = np.array(pts)
-
+'''
 sample_pcd_data = o3d.data.PCDPointCloud()
 pcd = o3d.geometry.PointCloud()
 pcd.points = o3d.utility.Vector3dVector(pts)
 fname = tstamp + '_final_map.pcd'
 o3d.io.write_point_cloud(os.path.join(data_dir, fname), pcd)
+'''
 # %%
 plt.plot(pts[:,0],pts[:,1], '*', color='red', markersize=5)
 plt.axis('equal')
@@ -255,4 +257,14 @@ with open(os.path.join(data_dir, fname), 'w') as fp:
 # Save Occupancy Map image
 img = Image.fromarray(occGrid)
 img.save(os.path.join(data_dir, imgname))
+# %%
+#Some basic debugging
+with open(os.path.join(data_dir, 'debug_map.pickle'), 'rb') as handle:
+    debug_points = pickle.load(handle)
+plt.plot(pts[:,0],pts[:,1], '*', color='red', markersize=5)
+plt.plot(debug_points[0,:], debug_points[1,:], '.', color='blue', markersize=5)
+plt.axis('equal')
+plt.show()
+
+
 # %%

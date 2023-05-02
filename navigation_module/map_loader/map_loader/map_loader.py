@@ -58,7 +58,7 @@ class mapLoader(Node):
         
 
         self.debug_point_cloud = self.create_subscription(PointCloud2,
-                                                        '/localization/aligned_pt_cloud',
+                                                        '/localization/aligned_lidar_pt_msg',
                                                         self.pt_cloud_listener, 
                                                         qos_profile=qos_profile)
         
