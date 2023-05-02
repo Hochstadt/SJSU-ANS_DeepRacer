@@ -5,7 +5,8 @@ package_name = 'vel_controller'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=[package_name, 'PID'],
+    package_dir = {'PID': '.'},
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -20,6 +21,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'vel_controller = vel_controller.vel_controller:main'
         ],
     },
 )
