@@ -7,7 +7,6 @@ from launch_ros.actions import Node
 
 
 #CHANGE THIS TO YOUR LOCATION OF THE SAVE DIRECTORY
-save_dir='/media/storage'
 
 def generate_launch_description():
     return launch.LaunchDescription([
