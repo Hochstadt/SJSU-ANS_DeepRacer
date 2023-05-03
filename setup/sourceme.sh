@@ -1,8 +1,9 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
 
 CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
+ANS_INTERFACES_PATH="$CUR_PATH/ans_interfaces"
 bError=0
 
 #Default ros2 stuff
@@ -18,7 +19,7 @@ export ROS_DOMAIN_ID=22
 #NO matter what car vs. host cpu we need the following
 ##INterfaces
 if [ ! -d $DEP_PATH ]
-then 
+then
   mkdir $DEP_PATH
 fi
 cd $DEP_PATH
@@ -31,11 +32,11 @@ then
   then
     git clone git@github.com:aws-deepracer/aws-deepracer-interfaces-pkg.git
   fi
-  
+
   #Go check dependencies and do build
-  cd $INF_PATH && rosdep install -i --from-path . --rosdistro foxy -y 
+  cd $INF_PATH && rosdep install -i --from-path . --rosdistro foxy -y
   #Go build the thing
-  cd $INF_PATH && colcon build --packages-select deepracer_interfaces_pkg 
+  cd $INF_PATH && colcon build --packages-select deepracer_interfaces_pkg
 fi
 source $INF_PATH/install/local_setup.bash
 export CMAKE_PREFIX_PATH="$INF_PATH/install"
@@ -79,9 +80,18 @@ else
 fi
 source $COMMON_INF_PATH/install/setup.bash
 
+# ans_interfaces
+########################################################################3
+#Check if built
+if [ ! -d "$ANS_INTERFACES_PATH/build" ]
+then
 
-
-
+  echo "Building ans_interfaces"
+  cd $ANS_INTERFACES_PATH && colcon build
+else
+  echo "ans_interfaces already exists and is built"
+fi
+source $ANS_INTERFACES_PATH/install/setup.bash
 
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
@@ -99,8 +109,8 @@ then
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
-  
-  #Paths for custom packages 
+
+  #Paths for custom packages
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   DATA_COL_PATH="$CUR_PATH/data_collector"
   cd $DEP_PATH
@@ -111,7 +121,7 @@ then
   then
     #Check if already cloned
     if [ ! -d $CAM_PATH ]
-    then 
+    then
       echo "Cloning deepracer camera package"
       git clone git@github.com:aws-deepracer/aws-deepracer-camera-pkg.git
     fi
@@ -123,8 +133,8 @@ then
   source $CAM_PATH/install/local_setup.bash
 
   cd $DEP_PATH
-  
-  # rplidar 
+
+  # rplidar
   #############################################################
   #Check if built
   if [ ! -d "$LIDAR_PATH/build" ]
@@ -142,7 +152,7 @@ then
   fi
   source $LIDAR_PATH/install/local_setup.bash
 
-  
+
   cd $DEP_PATH
   #Add additional dependencies here
 
@@ -157,10 +167,10 @@ then
     source /opt/aws/deepracer/lib/servo_pkg/share/servo_pkg/local_setup.bash
     #source any other aws related stuff here
   else
-    echo "Error: Did not detect AWS installations. Are you are on the correct system (ie. not the host)?" 
+    echo "Error: Did not detect AWS installations. Are you are on the correct system (ie. not the host)?"
     bError=1
   fi
- 
+
 
   #ssh_driver pkg
   ##########################################################
@@ -187,7 +197,7 @@ then
     fi
     source $DATA_COL_PATH/install/setup.bash
   fi
-    
+
 elif [ $1 = "host" ]
 then
   ####################################################################
@@ -197,6 +207,7 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
+  ANS_GUI_PATH="$CUR_PATH/ans_gui"
 
   #Rviz interface
   cd $CUR_PATH
@@ -219,7 +230,17 @@ then
     echo "ssh_controller already built"
   fi
   source $SSH_CONTROLLER_PATH/install/local_setup.bash
-  
+
+  # ANS GUI
+  if [ ! -d "$ANS_GUI_PATH/build" ]
+  then
+    echo "building ans_gui"
+    cd $ANS_GUI_PATH && colcon build
+  else
+    echo "ans_gui already built"
+  fi
+  source $ANS_GUI_PATH/install/local_setup.bash
+
 else
   echo "'$1' is not an understood argument, try one of the following"
   echo "source setup/sourceme.sh car"
