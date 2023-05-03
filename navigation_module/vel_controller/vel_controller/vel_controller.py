@@ -23,7 +23,7 @@ from scipy import integrate
 
 
 class velController(Node):
-    SAMPLE_TIME = .25
+    SAMPLE_TIME =.5 
     def __init__(self):
         super().__init__('vel_controller')
 
@@ -35,14 +35,16 @@ class velController(Node):
         self.zrotacc = []
         self.acc_time = []
         self.bCalibrated = False
-        self.calibration_time = 5 #seconds
+        self.calibration_time = 10 #seconds
         #vPID
-        vP = 10
-        vI = 1
-        vD = 1
+        self.startingThrottle = .2
+        vP = .3 
+        vI = 0.03 
+        vD = 0.001 
         self.vel_pid = PID(vP, vI, vD)
         self.vel_pid.setSampleTime(self.SAMPLE_TIME)
-        self.mThrottle = 0
+        self.vel_pid.setWindup(15)
+        self.mThrottle = -10000
 
         #angvelPID
         avP = 10
@@ -68,7 +70,7 @@ class velController(Node):
         #Subscribe to IMU
         self.bHaveData = False
         self.imu_subscriber = self.create_subscription(Imu,
-                                                       '/imu_pkg/data_raw', 
+                                                       '/data_raw', 
                                                        self.imu_receiver,
                                                        1)
         #The be all publisher
@@ -99,7 +101,7 @@ class velController(Node):
         
 
     def imu_receiver(self, msg):
-        self.get_logger().info('IMU Message Received')
+        #self.get_logger().info('IMU Message Received')
         #First check if we're calibrated
         #the acc is supposed to do this but it really didn't so...
         if self.bCalibrated:
@@ -169,9 +171,10 @@ class velController(Node):
 
     def vel_listener(self, msg):
         #self.get_logger.info('Velocity Command Received: <%.4f %.4f %.4f>' % (msg.x, msg.y, msg.z))
-        self.get_logger().info('Incoming Command Received: <%.4f> AND <%.4f>' % (msg.data[0], msg.data[1]))
+        self.get_logger().info('Incoming Command Received: <%.4f> AND <%.4f>' % (-1.0*msg.data[0], msg.data[1]))
+
         
-        
+        #duration = datetime.now() - self.start_time 
         if self.bCalibrated == True and self.bHaveData == True:
             #ideally specified in the body frame of the car, so X = forward?
             #need to verify with IMU output to make sure...
@@ -179,24 +182,28 @@ class velController(Node):
             #cmd_vel_y = msg.y
             #cmd_vel_z = msg.z
 
-            cmd_vel = msg.data[0]
+            cmd_vel = float(msg.data[0])
 
             if abs(cmd_vel) > 0 and self.bGPIOEnable == False:
                 self.bGPIOEnable = True
-                #self.enable_gpio()
+                self.enable_gpio()
             
             if cmd_vel == 0:
                 self.bGPIOEnable = False
-                #self.disable_gpio()
+                self.disable_gpio()
 
-            cmd_angle = msg.data[1]
+            cmd_angle = float(msg.data[1])
 
-            self.vel_pid.setPoint = cmd_vel
+            self.vel_pid.SetPoint = cmd_vel
             ##Identify current velocity:
             #Take off the offset for the mean (should have a check on the std to verify validity)
             np_xacc = np.array(self.xacc) - self.xacc_mean
+            #Reduce via std noise floor
+            #np_xacc[abs(np_xacc) > self.xacc_std] = 0 
             np_yacc = np.array(self.yacc) - self.yacc_mean
+            #np_yacc[abs(np_yacc) > self.yacc_std] = 0
             np_zacc = np.array(self.zacc) - self.zacc_mean
+            #np_zacc[abs(np_zacc) > self.zacc_std] = 0
 
             np_xrotacc = np.array(self.xrotacc) - self.xrotacc_mean
             np_yrotacc = np.array(self.yrotacc) - self.yrotacc_mean
@@ -204,10 +211,14 @@ class velController(Node):
 
             init_time = self.acc_time[0]
             delta_times = np.zeros((len(self.acc_time)))
-            print('Acc time stats')
-            print(self.acc_time)
-            print(len(self.acc_time))
-            print('Delta times shape: ', delta_times.shape)
+            self.get_logger().info('Mean: <%.4f, %.4f, %.4f>' % (self.xacc_mean, self.yacc_mean, self.zacc_mean))
+            self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc)), np.mean(np.array(self.yacc)), np.mean(np.array(self.zacc))))
+
+            #print('Acc time stats')
+            #print(self.acc_time)
+            #print(len(self.acc_time))
+            #if np.mean(np_xacc) > self.xacc_std or np.mean(np_yacc) > self.yacc_std or np.mean(np_zacc) > self.zacc_std:
+            self.get_logger().info('Delta times shape: %d' % (delta_times.shape[0]))
             for i in range(0, len(self.acc_time)):
                 print('i', i)
                 print('self.acc_time: ', self.acc_time[i])
@@ -219,6 +230,8 @@ class velController(Node):
             vel_x_meas = integrate.trapezoid(np_xacc, x=delta_times)
             vel_y_meas = integrate.trapezoid(np_yacc, x=delta_times)
             vel_z_meas = integrate.trapezoid(np_zacc, x=delta_times)
+            self.get_logger().info('Velocity: <%.4f, %.4f, %.4f>' % (vel_x_meas, vel_y_meas, vel_z_meas))
+
             #angular velocity
             angvel_x_meas = integrate.trapezoid(np_xrotacc, x=delta_times)
             angvel_y_meas = integrate.trapezoid(np_yrotacc, x=delta_times)
@@ -229,25 +242,37 @@ class velController(Node):
             deltatheta_y = angvel_y_meas * delta_times[-1]
             deltatheta_z = angvel_z_meas * delta_times[-1]
             #Print delta theta to see what's up:
-            self.get_logger().info('AngVel: <%.4f, %.4f, %.4f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
-            self.get_logger().info('Delta Theta: <%.4f, %.4f, %.4f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
+            #self.get_logger().info('AngVel: <%.4f, %.4f, %.4f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
+            #self.get_logger().info('Delta Theta: <%.4f, %.4f, %.4f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
 
-            #now norm it
-            meas_vel = math.sqrt(vel_x_meas**2 + vel_y_meas**2 + vel_z_meas**2)
-            self.get_logger().info('Velocity Command Received: <%.4f>' % meas_vel)
-            mThrottle = self.vel_pid.update(meas_vel)
-            print(mThrottle)
+            #now norm it, and don't really count z ...
+            
+            meas_vel = math.sqrt(vel_x_meas**2 + vel_y_meas**2)
+            #Need to add the direction, use x to deduce that but only if decernable direction
+            if vel_x_meas < 0 and np.mean(np_xacc) > self.xacc_std:
+                meas_vel = -1.0 * meas_vel
+            
+            tmp_err = self.vel_pid.update(float(meas_vel))
+            self.get_logger().info('Incoming Velocity Set point <%.4f>, Velocity measured: <%.4f>' % (self.vel_pid.SetPoint, meas_vel))
+            self.get_logger().info('Error of PID: <%.4f>' % tmp_err)
+            mThrottle = self.vel_pid.output
             if mThrottle is not None:
-                self.get_logger().info('Setting throttle to %.4f' % mThrottle)
                 #Need to decide to how to handle and control the steering, for now setting mSteering
                 # to 0. Like 
-                mSteering = 0
+                mSteering = 0.0
 
                 servoMsg = ServoCtrlMsg()
+                if mThrottle > 1.0:
+                    mThrottle = 1.0
+                elif mThrottle < -1.0:
+                    mThrottle = -1.0
                 servoMsg.throttle = mThrottle
+                self.get_logger().info('Setting throttle to %.4f' % (mThrottle))
                 servoMsg.angle = mSteering
                 self.throttle_pub.publish(servoMsg)
-
+            else:
+                self.get_logger().info('Mthrottle is none')
+            
             #Zero out IMu receipts:
             self.xacc = []
             self.xrotacc = []
@@ -257,6 +282,7 @@ class velController(Node):
             self.zrotacc = []
             self.acc_time = []
             self.bHaveData = False
+            self.start_time = datetime.now()
 
 
 
@@ -266,16 +292,20 @@ class velController(Node):
     def enable_gpio(self):
         gpio_request = ServoGPIOSrv.Request()
         gpio_request.enable = 0
-        self.future = self.gpio_client.call_async(gpio_request)
-        rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result()
+        #future = self.gpio_client.call_async(gpio_request)
+        self.get_logger().info('Trying to enable gpio')
+        self.gpio_client.call_async(gpio_request) 
+        #rclpy.spin_until_future_complete(gpio_request, future)
+        self.get_logger().info('GPIO Enabled')
 
     def disable_gpio(self):
+        self.get_logger().info('Trying to disable gpio')
         gpio_request = ServoGPIOSrv.Request()
         gpio_request.enable = 1
-        self.future = self.gpio_client.call_async(gpio_request)
-        rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result()
+        #future = self.gpio_client.call_async(gpio_request)
+        self.gpio_client.call_async(gpio_request)
+        #rclpy.spin_until_future_complete(gpio_request, future)
+        self.get_logger().info('GPIO Disabled')
 
 
 def main(args=None):
