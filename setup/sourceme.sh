@@ -184,6 +184,9 @@ then
       git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
     fi
     echo "BUilding imu package"
+    echo "-------------------------------------------------"
+    echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
+    echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
     cd $IMU_PKG && colcon build
   else
     echo "IMU package already exists and is built"
