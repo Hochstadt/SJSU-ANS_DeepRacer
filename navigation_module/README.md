@@ -6,7 +6,7 @@
 
 ```
 >>pip install open3d
->>pip install ros2_numpy==0.0.2
+>>pip install ros2_numpy==0.0.2 --ignore-requires-python
 >>sudo apt install ros-foxy-sensor-msgs-py
 ```
 
