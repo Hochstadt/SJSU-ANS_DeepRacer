@@ -18,7 +18,7 @@ def generate_launch_description():
                  'max_search_x':  2.0,
                  'delta_search_x': 5,
                  'min_search_y': -2.0,
-                 'max_search_y':  1.0,
+                 'max_search_y':  10.0,
                  'delta_search_y': 5,
                  'delta_search_ang': 5,
                  'rotationCheckThreshold': 0.017,
