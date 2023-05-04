@@ -28,11 +28,11 @@ class velController(Node):
         super().__init__('vel_controller')
 
         self.xacc = []
-        self.xrotacc = []
+        self.xrotvel = []
         self.yacc = []
-        self.yrotacc = []
+        self.yrotvel = []
         self.zacc = []
-        self.zrotacc = []
+        self.zrotvel = []
         self.acc_time = []
         self.bCalibrated = False
         self.calibration_time = 10 #seconds
@@ -44,7 +44,7 @@ class velController(Node):
         self.vel_pid = PID(vP, vI, vD)
         self.vel_pid.setSampleTime(self.SAMPLE_TIME)
         self.vel_pid.setWindup(15)
-        self.mThrottle = -10000
+        #self.mThrottle = -10000
         self.total_theta = 0
 
         #angvelPID
@@ -110,11 +110,11 @@ class velController(Node):
             #save it to the accel array
             self.acc_time.append(msg.header.stamp)
             self.xacc.append(msg.linear_acceleration.x)
-            self.xrotacc.append(msg.angular_velocity.x)
+            self.xrotvel.append(msg.angular_velocity.x)
             self.yacc.append(msg.linear_acceleration.y)
-            self.yrotacc.append(msg.angular_velocity.y)
+            self.yrotvel.append(msg.angular_velocity.y)
             self.zacc.append(msg.linear_acceleration.z)
-            self.zrotacc.append(msg.angular_velocity.z)
+            self.zrotvel.append(msg.angular_velocity.z)
             self.bHaveData = True
 
         else:
@@ -130,11 +130,11 @@ class velController(Node):
                 #accumulate data
                 self.acc_time.append(msg.header.stamp)
                 self.xacc.append(msg.linear_acceleration.x)
-                self.xrotacc.append(msg.angular_velocity.x)
+                self.xrotvel.append(msg.angular_velocity.x)
                 self.yacc.append(msg.linear_acceleration.y)
-                self.yrotacc.append(msg.angular_velocity.y)
+                self.yrotvel.append(msg.angular_velocity.y)
                 self.zacc.append(msg.linear_acceleration.z)
-                self.zrotacc.append(msg.angular_velocity.z)
+                self.zrotvel.append(msg.angular_velocity.z)
 
             else:
                 #do the calibration
@@ -142,29 +142,29 @@ class velController(Node):
                 self.xacc_mean = np.mean(np_xacc)
                 self.xacc_std = np.std(np_xacc)
                 np_xrotacc = np.array(self.xrotacc)
-                self.xrotacc_mean = np.mean(np_xrotacc)
-                self.xrot_acc_std = np.std(np_xrotacc)
+                self.xrotvel_mean = np.mean(np_xrotacc)
+                self.xrot_vel_std = np.std(np_xrotacc)
 
                 np_yacc = np.array(self.yacc)
                 self.yacc_mean = np.mean(np_yacc)
                 self.yacc_std = np.std(np_yacc)
                 np_yrotacc = np.array(self.yrotacc)
-                self.yrotacc_mean = np.mean(np_yrotacc)
-                self.yrotacc_std = np.std(np_yrotacc)
+                self.yrotvel_mean = np.mean(np_yrotacc)
+                self.yrotvel_std = np.std(np_yrotacc)
 
                 np_zacc = np.array(self.zacc)
                 self.zacc_mean = np.mean(np_zacc)
                 self.zacc_std = np.std(np_zacc)
                 np_zrotacc = np.array(self.zrotacc)
-                self.zrotacc_mean = np.mean(np_zrotacc)
-                self.zrotacc_std = np.std(np_zrotacc)
+                self.zrotvel_mean = np.mean(np_zrotacc)
+                self.zrotvel_std = np.std(np_zrotacc)
 
                 self.xacc = []
-                self.xrotacc = []
+                self.xrotvel = []
                 self.yacc = []
-                self.yrotacc = []
+                self.yrotvel = []
                 self.zacc = []
-                self.zrotacc = []
+                self.zrotvel = []
                 self.acc_time = []
                 self.bCalibrated = True
                 self.bHaveData = False
@@ -206,34 +206,37 @@ class velController(Node):
             np_zacc = np.array(self.zacc) - self.zacc_mean
             #np_zacc[abs(np_zacc) > self.zacc_std] = 0
 
-            np_xrotacc = np.array(self.xrotacc) - self.xrotacc_mean
-            np_yrotacc = np.array(self.yrotacc) - self.yrotacc_mean
-            np_zrotacc = np.array(self.zrotacc) - self.zrotacc_mean
+            #np_xrotvel = np.array(self.xrotvel) - self.xrotvel_mean
+            #np_yrotvel = np.array(self.yrotvel) - self.yrotvel_mean
+            #np_zrotvel = np.array(self.zrotvel) - self.zrotvel_mean
+            np_xrotvel = np.array(self.xrotvel)
+            np_yrotvel = np.array(self.yrotvel)
+            np_zrotvel = np.array(self.zrotvel)
 
             init_time = self.acc_time[0]
-            delta_times = np.zeros((len(self.acc_time)))
             self.get_logger().info('Acceleration Info')
             self.get_logger().info('Mean: <%.4f, %.4f, %.4f>' % (self.xacc_mean, self.yacc_mean, self.zacc_mean))
             self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc)), np.mean(np.array(self.yacc)), np.mean(np.array(self.zacc))))
-            self.get_logger().info('Rotation Acceleration Info')
-            self.get_logger().info('Mean <%.8f, %.8f, %.8f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean))
+            self.get_logger().info('Rotation Velocity Info')
+            self.get_logger().info('Mean <%.8f, %.8f, %.8f>' % (self.xrotvel_mean, self.yrotvel_mean, self.zrotvel_mean))
 
-            self.get_logger().info('OgMean <%.8f, %.8f, %.8f>' % (np.mean(np.array(self.xrotacc)), np.mean(np.array(self.yrotacc)), np.mean(np.array(self.zrotacc))))
 
             #if np.mean(np_xacc) > self.xacc_std or np.mean(np_yacc) > self.yacc_std or np.mean(np_zacc) > self.zacc_std:
             self.get_logger().info('Delta times shape: %d' % (delta_times.shape[0]))
+            delta_times = []
             for i in range(0, len(self.acc_time)):
-                delta_times[i] = self.acc_time[i].sec - init_time.sec
+                delta_times.append(self.acc_time[i].sec - init_time.sec)
             #linear velocity
+            delta_times = np.array(delta_times)
             vel_x_meas = integrate.trapezoid(np_xacc, x=delta_times)
             vel_y_meas = integrate.trapezoid(np_yacc, x=delta_times)
             vel_z_meas = integrate.trapezoid(np_zacc, x=delta_times)
             self.get_logger().info('Velocity: <%.4f, %.4f, %.4f>' % (vel_x_meas, vel_y_meas, vel_z_meas))
 
             #angular velocity
-            #deltatheta_x = integrate.trapezoid(np_xrotacc, x=delta_times)
-            #deltatheta_y = integrate.trapezoid(np_yrotacc, x=delta_times)
-            deltatheta_z = integrate.trapezoid(np_zrotacc, x=delta_times)
+            deltatheta_x = integrate.trapezoid(np_xrotvel, x=delta_times)
+            deltatheta_y = integrate.trapezoid(np_yrotvel, x=delta_times)
+            deltatheta_z = integrate.trapezoid(np_zrotvel, x=delta_times)
             #Over the coarse of given time this is the change in orientation
             #the calibration process should have made this start at 0 degrees....
             #deltatheta_x = angvel_x_meas * delta_times[-1] 
@@ -241,10 +244,10 @@ class velController(Node):
             #deltatheta_z = angvel_z_meas * delta_times[-1]
             #Print delta theta to see what's up:
             self.get_logger().info('Delta time: %.8f' % delta_times[-1])
-            #self.get_logger().info('AngVel: <%.8f, %.8f, %.8f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
-            self.get_logger().info('Delta Theta: <%.8f>' % deltatheta_z)
+            self.get_logger().info('AngVel <%.8f, %.8f, %.8f>' % (np.mean(np.array(self.xrotvel)), np.mean(np.array(self.yrotvel)), np.mean(np.array(self.zrotvel))))
+            self.get_logger().info('Delta Theta: <%.8f, %.8f, %.8f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
             self.total_theta += deltatheta_z 
-            self.get_logger().info('Total Theta: <%.4f>' % np.rad2deg(self.total_theta))
+            self.get_logger().info('Total Theta: <%.8f>' % np.rad2deg(self.total_theta))
 
             #now norm it, and don't really count z ...
             
