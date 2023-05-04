@@ -8,7 +8,9 @@
 #  bRebuild=0
 #fi
 
-
+#Update PATH as per Curtis' readme everything is installed in username/local/.bin
+#so have to add that to the path...
+#export PATH=$PATH:/home/deepracer/.local/bin
 
 CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
@@ -106,13 +108,13 @@ then
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
+  ROS_NUMPY="$DEP_PATH/ros2_numpy"
 
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   DATA_COL_PATH="$CUR_PATH/data_collector"
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
-  CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
 
   cd $DEP_PATH
 
@@ -192,6 +194,8 @@ then
     echo "IMU package already exists and is built"
   fi
   source $IMU_PKG/install/local_setup.bash
+
+    
 
   #ssh_driver pkg
   ##########################################################

@@ -9,6 +9,12 @@
 >>pip install ros2_numpy==0.0.2 --ignore-requires-python
 >>sudo apt install ros-foxy-sensor-msgs-py
 ```
+Note: unless you want to change your environment variables to include the 
+dependencies you installed, you may want to run the pip installs above as sudo so:
+```
+>>sudo pip install open3d
+>>sudo pip install ros2_numpy==0.0.2 --ignore-requires-python
+```
 
 2. Source ROS Foxy
 
