@@ -7,6 +7,7 @@
 ```
 >>pip install open3d
 >>pip install ros2_numpy==0.0.2
+>>sudo apt install ros-foxy-sensor-msgs-py
 ```
 
 2. Source ROS Foxy
