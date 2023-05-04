@@ -105,12 +105,15 @@ then
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
-  
+  IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
+
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   DATA_COL_PATH="$CUR_PATH/data_collector"
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
+  CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
+
   cd $DEP_PATH
 
   # Camera
@@ -169,6 +172,23 @@ then
     bError=1
   fi
  
+  #IMU PKG
+  ###########################################################3
+  cd $DEP_PATH
+  if [ ! -d "$IMU_PKG/build" ]
+  then
+    #Check if cloned
+    if [ ! -d $IMU_PKG ]
+    then
+      echo "Cloning IMU PKG"
+      git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
+    fi
+    echo "BUilding imu package"
+    cd $IMU_PKG && colcon build
+  else
+    echo "IMU package already exists and is built"
+  fi
+  source $IMU_PKG/install/local_setup.bash
 
   #ssh_driver pkg
   ##########################################################
@@ -219,6 +239,19 @@ then
       cd $LIDARACQ_PATH && colcon build
     fi
     source $LIDARACQ_PATH/install/setup.bash
+  fi
+
+  #controller
+  #################################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $CONTROLLER_PATH/build ]
+    then
+      echo "Building controller package"
+      cd $CONTROLLER_PATH && colcon build
+    fi
+    source $CONTROLLER_PATH/install/setup.bash
   fi
 elif [ $1 = "host" ]
 then
