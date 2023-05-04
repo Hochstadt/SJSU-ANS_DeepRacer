@@ -157,6 +157,14 @@ int main(int argc, char **argv)
       request->file_path = argv[2];
       
       // Wait for the result
+      while (!client->wait_for_service(1s)) {
+        if (!rclcpp::ok()) {
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+          return 0;
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+      }
+
       auto result = client->async_send_request(request);
       if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS)
       {
@@ -174,6 +182,14 @@ int main(int argc, char **argv)
       request->file_path = argv[2];
 
       // Wait for the result
+      while (!client->wait_for_service(1s)) {
+        if (!rclcpp::ok()) {
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+          return 0;
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+      }
+
       auto result = client->async_send_request(request);
       if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS)
       {
@@ -197,6 +213,14 @@ int main(int argc, char **argv)
       request->quat_w = std::stod(argv[8]);
 
       // Wait for the result
+      while (!client->wait_for_service(1s)) {
+        if (!rclcpp::ok()) {
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+          return 0;
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+      }
+
       auto result = client->async_send_request(request);
       if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS)
       {
@@ -210,7 +234,6 @@ int main(int argc, char **argv)
       return 0;
   }
   
-
 
 
   rclcpp::shutdown();
