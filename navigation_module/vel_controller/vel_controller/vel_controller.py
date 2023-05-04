@@ -211,22 +211,21 @@ class velController(Node):
 
             init_time = self.acc_time[0]
             delta_times = np.zeros((len(self.acc_time)))
+            self.get_logger().info('Acceleration Info')
             self.get_logger().info('Mean: <%.4f, %.4f, %.4f>' % (self.xacc_mean, self.yacc_mean, self.zacc_mean))
             self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc)), np.mean(np.array(self.yacc)), np.mean(np.array(self.zacc))))
+            self.get_logger().info('Rotation Acceleration Info')
+            self.get_logger().info('Mean <%.4f, %.4f, %.4f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean)
 
+            self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc_rot)), np.mean(np.array(self.yacc_rot)), np.mean(np.array(self.zacc_rot))))
             #print('Acc time stats')
             #print(self.acc_time)
             #print(len(self.acc_time))
             #if np.mean(np_xacc) > self.xacc_std or np.mean(np_yacc) > self.yacc_std or np.mean(np_zacc) > self.zacc_std:
             self.get_logger().info('Delta times shape: %d' % (delta_times.shape[0]))
             for i in range(0, len(self.acc_time)):
-                print('i', i)
-                print('self.acc_time: ', self.acc_time[i])
-                print('init time: ', init_time)
-                print('Seconds: ', (self.acc_time[i].sec - init_time.sec))
                 delta_times[i] = self.acc_time[i].sec - init_time.sec
             #linear velocity
-            print('Integrating')
             vel_x_meas = integrate.trapezoid(np_xacc, x=delta_times)
             vel_y_meas = integrate.trapezoid(np_yacc, x=delta_times)
             vel_z_meas = integrate.trapezoid(np_zacc, x=delta_times)
@@ -242,8 +241,9 @@ class velController(Node):
             deltatheta_y = angvel_y_meas * delta_times[-1]
             deltatheta_z = angvel_z_meas * delta_times[-1]
             #Print delta theta to see what's up:
-            #self.get_logger().info('AngVel: <%.4f, %.4f, %.4f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
-            #self.get_logger().info('Delta Theta: <%.4f, %.4f, %.4f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
+            self.get_logger().info('Delta time: %.4f' & delta_times[-1])
+            self.get_logger().info('AngVel: <%.4f, %.4f, %.4f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
+            self.get_logger().info('Delta Theta: <%.4f, %.4f, %.4f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
 
             #now norm it, and don't really count z ...
             
