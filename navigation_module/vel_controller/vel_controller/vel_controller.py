@@ -215,7 +215,7 @@ class velController(Node):
             self.get_logger().info('Mean: <%.4f, %.4f, %.4f>' % (self.xacc_mean, self.yacc_mean, self.zacc_mean))
             self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc)), np.mean(np.array(self.yacc)), np.mean(np.array(self.zacc))))
             self.get_logger().info('Rotation Acceleration Info')
-            self.get_logger().info('Mean <%.4f, %.4f, %.4f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean)
+            self.get_logger().info('Mean <%.4f, %.4f, %.4f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean))
 
             self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc_rot)), np.mean(np.array(self.yacc_rot)), np.mean(np.array(self.zacc_rot))))
             #print('Acc time stats')
