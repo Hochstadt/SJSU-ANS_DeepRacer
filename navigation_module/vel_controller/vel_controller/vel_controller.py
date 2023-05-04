@@ -38,13 +38,14 @@ class velController(Node):
         self.calibration_time = 10 #seconds
         #vPID
         self.startingThrottle = .2
-        vP = .3 
+        vP = .7 
         vI = 0.03 
         vD = 0.001 
         self.vel_pid = PID(vP, vI, vD)
         self.vel_pid.setSampleTime(self.SAMPLE_TIME)
         self.vel_pid.setWindup(15)
         self.mThrottle = -10000
+        self.total_theta = 0
 
         #angvelPID
         avP = 10
@@ -215,12 +216,10 @@ class velController(Node):
             self.get_logger().info('Mean: <%.4f, %.4f, %.4f>' % (self.xacc_mean, self.yacc_mean, self.zacc_mean))
             self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc)), np.mean(np.array(self.yacc)), np.mean(np.array(self.zacc))))
             self.get_logger().info('Rotation Acceleration Info')
-            self.get_logger().info('Mean <%.4f, %.4f, %.4f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean))
+            self.get_logger().info('Mean <%.8f, %.8f, %.8f>' % (self.xrotacc_mean, self.yrotacc_mean, self.zrotacc_mean))
 
-            self.get_logger().info('OgMean <%.4f, %.4f, %.4f>' % (np.mean(np.array(self.xacc_rot)), np.mean(np.array(self.yacc_rot)), np.mean(np.array(self.zacc_rot))))
-            #print('Acc time stats')
-            #print(self.acc_time)
-            #print(len(self.acc_time))
+            self.get_logger().info('OgMean <%.8f, %.8f, %.8f>' % (np.mean(np.array(self.xrotacc)), np.mean(np.array(self.yrotacc)), np.mean(np.array(self.zrotacc))))
+
             #if np.mean(np_xacc) > self.xacc_std or np.mean(np_yacc) > self.yacc_std or np.mean(np_zacc) > self.zacc_std:
             self.get_logger().info('Delta times shape: %d' % (delta_times.shape[0]))
             for i in range(0, len(self.acc_time)):
@@ -232,18 +231,20 @@ class velController(Node):
             self.get_logger().info('Velocity: <%.4f, %.4f, %.4f>' % (vel_x_meas, vel_y_meas, vel_z_meas))
 
             #angular velocity
-            angvel_x_meas = integrate.trapezoid(np_xrotacc, x=delta_times)
-            angvel_y_meas = integrate.trapezoid(np_yrotacc, x=delta_times)
-            angvel_z_meas = integrate.trapezoid(np_zrotacc, x=delta_times)
+            #deltatheta_x = integrate.trapezoid(np_xrotacc, x=delta_times)
+            #deltatheta_y = integrate.trapezoid(np_yrotacc, x=delta_times)
+            deltatheta_z = integrate.trapezoid(np_zrotacc, x=delta_times)
             #Over the coarse of given time this is the change in orientation
             #the calibration process should have made this start at 0 degrees....
-            deltatheta_x = angvel_x_meas * delta_times[-1] 
-            deltatheta_y = angvel_y_meas * delta_times[-1]
-            deltatheta_z = angvel_z_meas * delta_times[-1]
+            #deltatheta_x = angvel_x_meas * delta_times[-1] 
+            #deltatheta_y = angvel_y_meas * delta_times[-1]
+            #deltatheta_z = angvel_z_meas * delta_times[-1]
             #Print delta theta to see what's up:
-            self.get_logger().info('Delta time: %.4f' & delta_times[-1])
-            self.get_logger().info('AngVel: <%.4f, %.4f, %.4f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
-            self.get_logger().info('Delta Theta: <%.4f, %.4f, %.4f>' % (deltatheta_x, deltatheta_y, deltatheta_z))
+            self.get_logger().info('Delta time: %.8f' % delta_times[-1])
+            #self.get_logger().info('AngVel: <%.8f, %.8f, %.8f>' % (angvel_x_meas, angvel_y_meas, angvel_z_meas))
+            self.get_logger().info('Delta Theta: <%.8f>' % deltatheta_z)
+            self.total_theta += deltatheta_z 
+            self.get_logger().info('Total Theta: <%.4f>' % np.rad2deg(self.total_theta))
 
             #now norm it, and don't really count z ...
             
