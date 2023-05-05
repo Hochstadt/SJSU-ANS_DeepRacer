@@ -253,9 +253,21 @@ def point_based_matching(point_pairs):
         s_x_yp += (x - x_mean) * (yp - yp_mean)
         s_y_xp += (y - y_mean) * (xp - xp_mean)
 
-    
+    #s_x_yp  = how much - rotation we want in positive direction (up to 90 degrees)
+    #   this is the global correlation between the map's x coordinates and the incoming
+    #   point's y coordinates. If this is strong it means the incoming pointc loud y's coordinates
+    #   most closely correlate to the map's x coordinates, so do a positve rotation
+    #s_y_xp = how much rotation we want in negative rotation
+    #   as before htis is how well the map's y coordniates are aligned with incoming
+    #   point clouds x coordinates. 
+    #s_x_xp and s_y_yp - this is a measure of how well the alignments are correlated
+    #   for perfect alignment this value is the maximum it could be, and htus the roation
+    #   angle output will be near 0
+
 
     rot_angle = math.atan2(s_x_yp - s_y_xp, s_x_xp + s_y_yp)
+    #To get the translation all we do is rotate the map to get to the incoming point and then apply
+    # the mean offset. As long as the point clouds are mostly the same this method is sound
     translation_x = xp_mean - (x_mean * math.cos(rot_angle) - y_mean*math.sin(rot_angle))
     translation_y = yp_mean - (x_mean * math.sin(rot_angle) + y_mean*math.cos(rot_angle))
 

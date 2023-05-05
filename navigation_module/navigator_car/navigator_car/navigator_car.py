@@ -90,11 +90,9 @@ class navigatorCar(Node):
             #to acheive that way point. There's also no control on the position itself, so we should probably have
             #a timer to indicate a 'missed way point' and move on to the enxt one. This can be done by looking at
             #the speed commanded (and recorded...), and deduce how long it should have taken to get to the waypoint
-            
+
             self.cmd_publisher(cmd)
-
                 
-
     def path_listener(self, msg):
         self.path = msg
         if self.bNoiseChar == False:
@@ -115,6 +113,9 @@ class navigatorCar(Node):
             self.y_limit = self.BOUND_CONSTANT * abs(dy)
             self.start_pose = start_pose
             self.next_pose = self.path.poses[self.path_index].pose
+            
+            #self.projected_time = dx/self.avg_vel
+            
             self.path_index+=1
             self.bNOiseChar == True
         
@@ -128,3 +129,13 @@ class navigatorCar(Node):
     
     #def update_cmd(self, msg):
     #    if self.bReceivedPath == True:
+
+def main(args=None):
+    rclpy.init(args=args)
+    navigator_car = navigatorCar()
+    rclpy.spin(navigator_car)
+    navigator_car.destroy_node()
+    rclpy.shotdown()
+
+if __name__ == '__main__':
+    main()
