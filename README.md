@@ -153,15 +153,20 @@ as much processing is moved to the host comptuer as possible.
 
 # To setup the ANS GUI...
 Follow the process above to setup the `ssh_driver` which the GUI needs to interface with. Similar to the `ssh_controller`, `setup/sourceme.sh host` will be used to build and setup the ANS GUI
-### Run SSH controller on the car
+### Run SSH driver on the car
 1. Set CWD to the `SJSU-ANS_DeepRacer` directory
 2. `source setup/sourceme.sh car`
-3. `ros2 launch ssh_controller ssh_controller.launch.py
+3. `ros2 launch ssh_driver ssh_launcher.launch.py
 
 ### Run the ANS GUI on the host
 1. Set CWD to the `SJSU-ANS_DeepRacer` directory
 2. `source setup/sourceme.sh host`
 3. `ros2 run ans_gui_pkg ans_gui
+
+### Run the cmdvel_to-servo_node package
+1. Set the CWD to the `SJSU-ANS_DeepRacer` directory
+2. `source setup/sourceme.sh car`
+3. `ros2 launch cmdvel_to_servo_pkg cmdvel_to_servo_pkg_launch.py`
 
 ** Note ** - I had to Stop the deepracer-core.service else my ROS communication would not work
 `scripts/init_stop_core_services.sh`

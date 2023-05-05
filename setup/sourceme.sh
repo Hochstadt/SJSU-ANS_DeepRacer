@@ -109,6 +109,7 @@ then
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
+  AWS_DEEPRACER_NAV="$DEP_PATH/aws-deepracer"
 
   #Paths for custom packages
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
@@ -135,6 +136,29 @@ then
   cd $DEP_PATH
 
   # rplidar
+  #############################################################
+  #Check if built
+  if [ ! -d "$AWS_DEEPRACER_NAV/build" ]
+  then
+    #Check if cloned
+    if [ ! -d $AWS_DEEPRACER_NAV ]
+    then
+      echo "AWS DeepRacer Navigation Stack repo"
+      git clone https://github.com/aws-deepracer/aws-deepracer.git
+      # For some reason the topic they publish is /cmdvel_to_servo_node/servo_msg, it needs to be /ctrl_pkg/servo_msg
+      # Replace  constants.ACTION_PUBLISH_TOPIC  with  'ctrl_pkg/servo_msg'
+    fi
+    echo "Building cmdvel_to_servo_pkg package"
+    cd $AWS_DEEPRACER_NAV && colcon build --packages-select cmdvel_to_servo_pkg
+  else
+    echo "cmdvel_to_servo_pkg package already exists and is built"
+  fi
+  source $AWS_DEEPRACER_NAV/install/local_setup.bash
+
+  cd $DEP_PATH
+
+  # AWS DeepRacer ROS Navigation Stack
+  # -- Need cmdvel_to_servo_pkg for joystick control
   #############################################################
   #Check if built
   if [ ! -d "$LIDAR_PATH/build" ]
