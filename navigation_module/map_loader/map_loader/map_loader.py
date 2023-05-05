@@ -121,8 +121,7 @@ class mapLoader(Node):
                 sleep(0.25)
         
     def publishGoalState(self):
-            
-        
+
         #Check if this map file exists 
         my_header = Header()
         my_header.stamp = self.get_clock().now().to_msg()
