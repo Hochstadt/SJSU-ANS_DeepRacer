@@ -329,9 +329,6 @@ then
   fi
   source $SSH_CONTROLLER_PATH/install/local_setup.bash
 
-
-
-
   cd $CUR_PATH
   #ans_msgs
   ####################################################
