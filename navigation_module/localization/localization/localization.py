@@ -74,7 +74,7 @@ class Localization(Node):
             # Create Goal State message subscriber
             self.mGoalStateSub = self.create_subscription(
                 PoseStamped,
-                "/ans_services/goal_state_msg",
+                "/goal_pose",
                 self.store_goal_state,
                 qos_profile=qos_profile)
                 
@@ -161,9 +161,6 @@ class Localization(Node):
             self.goalState[0,3] = goalMsg.pose.position.x
             self.goalState[1,3] = goalMsg.pose.position.z
             self.goalState[2,3] = goalMsg.pose.position.x
-            ros_pose.pose.position.x = pose[0,3]
-            ros_pose.pose.position.y = pose[1,3]
-            ros_pose.pose.position.z = pose[2,3]
 
             # Calculate DCM
             q = np.array([goalMsg.pose.orientation.x, goalMsg.pose.orientation.y, goalMsg.pose.orientation.z, goalMsg.pose.orientation.w])

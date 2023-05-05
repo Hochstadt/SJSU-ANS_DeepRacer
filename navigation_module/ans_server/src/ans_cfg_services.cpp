@@ -71,7 +71,7 @@ private:
     //Generate Point Cloud Message
     sensor_msgs::msg::PointCloud2 mapMessage;
     pcl::toROSMsg(*mapCloud, mapMessage);
-    mapMessage.header.frame_id = "/odom";
+    mapMessage.header.frame_id = "odom";
 
     // Create Publish Navigation Map
     mMapCloudPub->publish(mapMessage);  
@@ -87,6 +87,7 @@ private:
     //Convert input file to Occupancy grid
     nav_msgs::msg::OccupancyGrid occupancy_grid_msg;
     nav2_map_server::loadMapFromYaml(request->file_path, occupancy_grid_msg);
+    occupancy_grid_msg.header.frame_id = "odom";
 
     // Create Publish Occupancy Map
     mMapOccupyPub->publish(occupancy_grid_msg);  
@@ -104,7 +105,7 @@ private:
             
     // Create PoseStamped Msg
     geometry_msgs::msg::PoseStamped pose_msg;
-    pose_msg.header.frame_id = "/odom";
+    pose_msg.header.frame_id = "odom";
     pose_msg.pose.position.x = request->pos_x;
     pose_msg.pose.position.y = request->pos_y;
     pose_msg.pose.position.z = request->pos_z;
