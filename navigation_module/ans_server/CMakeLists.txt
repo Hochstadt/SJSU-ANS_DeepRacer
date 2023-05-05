@@ -41,12 +41,18 @@ add_executable(cfg_server src/ans_cfg_services.cpp)
 target_link_libraries(cfg_server ${PCL_LIBRARIES})
 ament_target_dependencies(cfg_server ${dependencies} nav_msgs)
 
+ament_export_dependencies(rosidl_default_runtime)
+
 
 install(TARGETS 
   cfg_server
   cfg_client
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+  )
  
-ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()
