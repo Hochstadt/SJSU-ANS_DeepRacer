@@ -1,9 +1,22 @@
 #!/usr/bin/env bash 
+#Not super necessary for now
+#Check if user wants to remove current build stuff to do a re-build
+#if [ "$1" = "rebuild" ]
+#then
+#  bRebuild=1
+#else
+#  bRebuild=0
+#fi
+
+#Update PATH as per Curtis' readme everything is installed in username/local/.bin
+#so have to add that to the path...
+#export PATH=$PATH:/home/deepracer/.local/bin
 
 CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
 bError=0
+bLC=0
 
 #Default ros2 stuff
 if [ ! -d "/opt/ros/foxy" ]
@@ -77,11 +90,7 @@ then
 else
   echo "Common interfaces packages already exists and is built"
 fi
-source $COMMON_INF_PATH/install/local_setup.bash
-
-
-
-
+source $COMMON_INF_PATH/install/setup.bash
 
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
@@ -97,12 +106,19 @@ then
   echo "Car build selected."
   #Relevant paths for dependencies
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
+  IMU_PATH="$DEP_PATH/aws-deepracer-imu-pkg/imu_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
-  
+  IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
+  ROS_NUMPY="$DEP_PATH/ros2_numpy"
+
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
+  PID_CONTROL_PATH="$CUR_PATH/pid_control"
   DATA_COL_PATH="$CUR_PATH/data_collector"
+  LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
+  LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
+
   cd $DEP_PATH
 
   # Camera
@@ -122,7 +138,29 @@ then
   fi
   source $CAM_PATH/install/local_setup.bash
 
+  if [ $bLC != 1 ]
+  then
+    cd $DEP_PATH
+    if [ ! -d "$IMU_PATH/build" ]
+    then
+      #Check if already cloned
+      if [ ! -d $IMU_PATH ]
+      then
+        echo "Cloning deepracer imu package"
+        git clone https://github.com/robofoundry/aws-deepracer-imu-pkg.git
+      fi
+      echo "Changing device address to possible new standard"
+      sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
+      echo "Building imu package"
+      cd $IMU_PATH && colcon build
+    else
+      echo "imu package already exists and is built"
+    fi
+    source $IMU_PATH/install/local_setup.bash
+  fi
+
   cd $DEP_PATH
+
   
   # rplidar 
   #############################################################
@@ -161,6 +199,31 @@ then
     bError=1
   fi
  
+  #IMU PKG
+  ###########################################################3
+  if [ $bLC != 0 ]
+    then
+    cd $DEP_PATH
+    if [ ! -d "$IMU_PKG/build" ]
+    then
+      #Check if cloned
+      if [ ! -d $IMU_PKG ]
+      then
+        echo "Cloning IMU PKG"
+        git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
+      fi
+      echo "BUilding imu package"
+      echo "-------------------------------------------------"
+      echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
+      echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
+      cd $IMU_PKG && colcon build
+    else
+      echo "IMU package already exists and is built"
+    fi
+    source $IMU_PKG/install/local_setup.bash
+  fi
+
+    
 
   #ssh_driver pkg
   ##########################################################
@@ -187,7 +250,63 @@ then
     fi
     source $DATA_COL_PATH/install/setup.bash
   fi
+  #localizer
+  #################################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $LOCALIZER_PATH/build ]
+    then
+      echo "Building localization package"
+      cd $LOCALIZER_PATH && colcon build
+    fi
+    source $LOCALIZER_PATH/install/setup.bash
+  fi
     
+  #lidar_scan_acq
+  #################################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $LIDARACQ_PATH/build ]
+    then
+      echo "Building lidar acquisition package"
+      cd $LIDARACQ_PATH && colcon build
+    fi
+    source $LIDARACQ_PATH/install/setup.bash
+  fi
+
+  #controller
+  #################################################################
+  if [ $bLC != 0 ]
+  then
+    cd $CUR_PATH
+    if [ $bError != 1 ]
+    then
+      if [ ! -d $CONTROLLER_PATH/build ]
+      then
+        echo "Building controller package"
+        cd $CONTROLLER_PATH && colcon build
+      fi
+      source $CONTROLLER_PATH/install/setup.bash
+    fi
+  fi
+
+  #udp_sender pkg
+  ##########################################################
+  if [ $bLC != 1 ] 
+  then
+    cd $CUR_PATH
+    if [ $bError != 1 ]
+    then
+      if [ ! -d $PID_CONTROL_PATH/build ]
+      then
+          echo "Building pid_control package"
+          cd $PID_CONTROL_PATH && colcon build
+      fi
+      source $PID_CONTROL_PATH/install/setup.bash
+    fi 
+  fi
 elif [ $1 = "host" ]
 then
   ####################################################################
@@ -197,7 +316,9 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
-
+  MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
+  ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
+  ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
   #Rviz interface
   cd $CUR_PATH
   if [ ! -d "$RVIZ_INF/build" ]
@@ -219,6 +340,43 @@ then
     echo "ssh_controller already built"
   fi
   source $SSH_CONTROLLER_PATH/install/local_setup.bash
+
+  cd $CUR_PATH
+  #ans_msgs
+  ####################################################
+  if [ ! -d "$ANS_MSGS/build" ]
+  then
+    echo "building ans_msgs"
+    cd $ANS_MSGS && colcon build
+  else
+    echo "ans_msgs already built"
+  fi
+  source $ANS_MSGS/install/setup.bash
+
+  cd $CUR_PATH
+  #ans_server
+  ####################################################
+  if [ ! -d "$ANS_SERVER/build" ]
+  then
+    echo "building ans_server"
+    cd $ANS_SERVER && colcon build
+  else
+    echo "ans_server already built"
+  fi
+  source $ANS_SERVER/install/setup.bash
+
+  #map_loader
+  ##########################################33
+    
+  cd $CUR_PATH
+  if [ ! -d "$MAP_LOADER/build" ]
+  then
+    echo "building map loader"
+    cd $MAP_LOADER && colcon build
+  else
+    echo "map loader already built"
+  fi
+  source $MAP_LOADER/install/local_setup.bash
   
 else
   echo "'$1' is not an understood argument, try one of the following"

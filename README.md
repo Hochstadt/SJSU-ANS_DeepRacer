@@ -21,11 +21,17 @@ won't allow you to drive the car very far! My suggestion is to ssh:
 >>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git
 >>cd SJSU-ANS_DeepRacer
 ```
+1.5. To build the automous portion we need to make sure we have the drivers for the
+IMU chip. To do so we need to install BMI160-i2c and smbus. We can do this with the following
+```
+>>pip install BMI160-i2c smbus2
+```
 
 2. Now source the sourceme script with the 'car' argument by running the following script.
 (You should be in the directory named SJSU-ANS_DeepRacer)
 
 ```>>source setup/sourceme.sh car ```
+
 
 3. When this completes successfully, create a new ssh connection through a new terminal
 and become the root user by typing the following:
@@ -142,7 +148,16 @@ the packages.
 8. (ON host) open webpage: http://localhost:8080/stream?topic=/camera_pkg/display_mjpeg&width=320&height=240&quality=50
 9. (On host) In the xterm window use i,jlk to control vehicle
 
-
+When you started the ssh_controller after the ssh_driver was already launched data_collection would have already started. The location of
+the data collection is set within the launch file of the ssh_driver. To change it, it is at the top of ssh_driver/launch/launch.py. When the 
+data collection is complete you can view the data on the car. To get it off, you can run the bash script in data_collector, and make sure you
+are running from the root directory. Run as follows:
+```
+>>data_collector/retrieve_data.sh 192.168.1.26 /media/storage/good_collect
+```
+Where the first argument is the IP address of the deepracer and the second argument is the data location ont the deepracer. This will scp the
+data you want to a data directory in the root folder and then convert the pc2 to numpy arrays as well as create a video. This is done so that 
+as much processing is moved to the host comptuer as possible.
 
 ## NExt steps:
 need to also collect, stream, and store lidar data and store the images. This would compose a 'collect'
