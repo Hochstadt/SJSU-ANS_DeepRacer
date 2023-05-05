@@ -16,6 +16,7 @@ CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
 bError=0
+bLC=0
 
 #Default ros2 stuff
 if [ ! -d "/opt/ros/foxy" ]
@@ -137,24 +138,26 @@ then
   fi
   source $CAM_PATH/install/local_setup.bash
 
-  cd $DEP_PATH
-
-  if [ ! -d "$IMU_PATH/build" ]
+  if [ $bLC != 1 ]
   then
-    #Check if already cloned
-    if [ ! -d $IMU_PATH ]
+    cd $DEP_PATH
+    if [ ! -d "$IMU_PATH/build" ]
     then
-      echo "Cloning deepracer imu package"
-      git clone https://github.com/robofoundry/aws-deepracer-imu-pkg.git
+      #Check if already cloned
+      if [ ! -d $IMU_PATH ]
+      then
+        echo "Cloning deepracer imu package"
+        git clone https://github.com/robofoundry/aws-deepracer-imu-pkg.git
+      fi
+      echo "Changing device address to possible new standard"
+      sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
+      echo "Building imu package"
+      cd $IMU_PATH && colcon build
+    else
+      echo "imu package already exists and is built"
     fi
-    echo "Changing device address to possible new standard"
-    sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
-    echo "Building imu package"
-    cd $IMU_PATH && colcon build
-  else
-    echo "imu package already exists and is built"
+    source $IMU_PATH/install/local_setup.bash
   fi
-  source $IMU_PATH/install/local_setup.bash
 
   cd $DEP_PATH
 
@@ -198,24 +201,27 @@ then
  
   #IMU PKG
   ###########################################################3
-  cd $DEP_PATH
-  if [ ! -d "$IMU_PKG/build" ]
-  then
-    #Check if cloned
-    if [ ! -d $IMU_PKG ]
+  if [ $bLC != 0 ]
     then
-      echo "Cloning IMU PKG"
-      git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
+    cd $DEP_PATH
+    if [ ! -d "$IMU_PKG/build" ]
+    then
+      #Check if cloned
+      if [ ! -d $IMU_PKG ]
+      then
+        echo "Cloning IMU PKG"
+        git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
+      fi
+      echo "BUilding imu package"
+      echo "-------------------------------------------------"
+      echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
+      echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
+      cd $IMU_PKG && colcon build
+    else
+      echo "IMU package already exists and is built"
     fi
-    echo "BUilding imu package"
-    echo "-------------------------------------------------"
-    echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
-    echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
-    cd $IMU_PKG && colcon build
-  else
-    echo "IMU package already exists and is built"
+    source $IMU_PKG/install/local_setup.bash
   fi
-  source $IMU_PKG/install/local_setup.bash
 
     
 
@@ -272,29 +278,35 @@ then
 
   #controller
   #################################################################
-  cd $CUR_PATH
-  if [ $bError != 1 ]
+  if [ $bLC != 0 ]
   then
-    if [ ! -d $CONTROLLER_PATH/build ]
+    cd $CUR_PATH
+    if [ $bError != 1 ]
     then
-      echo "Building controller package"
-      cd $CONTROLLER_PATH && colcon build
+      if [ ! -d $CONTROLLER_PATH/build ]
+      then
+        echo "Building controller package"
+        cd $CONTROLLER_PATH && colcon build
+      fi
+      source $CONTROLLER_PATH/install/setup.bash
     fi
-    source $CONTROLLER_PATH/install/setup.bash
   fi
 
   #udp_sender pkg
   ##########################################################
-  cd $CUR_PATH
-  if [ $bError != 1 ]
+  if [ $bLC != 1 ] 
   then
-    if [ ! -d $PID_CONTROL_PATH/build ]
+    cd $CUR_PATH
+    if [ $bError != 1 ]
     then
-        echo "Building pid_control package"
-        cd $PID_CONTROL_PATH && colcon build
-    fi
-    source $PID_CONTROL_PATH/install/setup.bash
-  fi 
+      if [ ! -d $PID_CONTROL_PATH/build ]
+      then
+          echo "Building pid_control package"
+          cd $PID_CONTROL_PATH && colcon build
+      fi
+      source $PID_CONTROL_PATH/install/setup.bash
+    fi 
+  fi
 elif [ $1 = "host" ]
 then
   ####################################################################
