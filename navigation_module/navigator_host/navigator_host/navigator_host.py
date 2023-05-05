@@ -35,14 +35,14 @@ class navigatorHost(Node):
         self.bMapLoaded = False
         map_file = 'na'
         occ_file = 'na'
-        goal_state = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        #goal_state = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
         #Expecting this to be the full path to the map file. If na will search
         #the current directory for one
         self.declare_parameter('map_file', map_file)
         #Only add this if needed....
         #self.declare_parameter('occ_file', occ_file)
 
-        self.declare_parameter('goal_state', goal_state)
+        #self.declare_parameter('goal_state', goal_state)
         #reports the aligned poitn cloud
         self.debug_point_array = -1
         #reports the pose
@@ -57,7 +57,7 @@ class navigatorHost(Node):
         self.goal_publisher = self.create_publisher(PoseStamped, 
                                                    '/ans_services/goal_state_msg', 
                                                    10)
-        self.goal_timer = self.create_timer(1, self.publishGoalState)
+
 
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -138,24 +138,6 @@ class navigatorHost(Node):
         if self.bMapLoaded == True:
             self.get_logger().info('Sending Point Cloud To Car')            
             self.map_publisher.publish(pc)
-            
-            
-    def publishGoalState(self):
-        #Check if this map file exists 
-        my_header = Header()
-        my_header.stamp = self.get_clock().now().to_msg()
-        my_header.frame_id = 'goal_state'
-        my_pose = PoseStamped()
-        
-        my_pose.pose.position.x = self.goal_state[0]
-        my_pose.pose.position.y = self.goal_state[1]
-        my_pose.pose.position.z = self.goal_state[2]
-        my_pose.pose.orientation.x = self.goal_state[3]
-        my_pose.pose.orientation.y = self.goal_state[4]
-        my_pose.pose.orientation.z = self.goal_state[5]
-        my_pose.pose.orientation.w = self.goal_state[6]
-
-        self.goal_publisher.publish(my_pose)
 
     def pose_listener(self, msg):
         self.point = msg.pose.position
@@ -190,21 +172,17 @@ class navigatorHost(Node):
             #############################################################################
             #For now creating my own path though
             pos = np.array([[self.point.x, self.point.y]]).transpose()
-            path = self.get_hand_path(pos)
+            path, goal_state = self.get_hand_path(pos)
             #But would take the self.debug_point_array, and the self.point and self.quaternion to figure
             #out the path....
 
             #Now need to call the navigator_car service, with the map to essentially start navigating
             #Send asynchronous call:
-            self.get_logger().info('Path identified, now publishing')
-
+            self.get_logger().info('Path identified, now publishing w/goal')
             self.path_publisher.publish(path)
+            self.goal_publisher.publish(goal_state)
             self.bPathSent = True
-                
-
-
-
-            
+   
                 
     def get_quaternion_from_euler(self, roll, pitch, yaw):
         """
@@ -248,7 +226,7 @@ class navigatorHost(Node):
             pts_x = np.linspace(st_x, ed_x, num=sample_num)
             pts_y = np.linspace(st_y, ed_y, num=sample_num)
             if np.any(total_pts):
-                total_pts = np.hstack((total_pts, np.array([pts_x[1:-1], pts_y[1:-1]])))
+                total_pts = np.hstack((total_pts, np.array([pts_x[0:-1], pts_y[0:-1]])))
                 total_rots = np.hstack((total_rots, np.ones(sample_num)*rotangle))
                 
             else:
@@ -288,7 +266,10 @@ class navigatorHost(Node):
             tmpPS.header = myHeader
             tmpPS.pose = tmpPose
             myPath.poses.append(tmpPS)
-        return myPath
+
+        #goal state is the end
+        goal_state = myPath.poses[-1]
+        return myPath, goal_state
 
 def main(args=None):
     rclpy.init(args=args)

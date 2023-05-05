@@ -22,8 +22,7 @@ def generate_launch_description():
             executable='navigator_host', 
             parameters=[
                 {
-                    'map_file': 'map_file.pickle',
-                    'goal_state': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+                    'map_file': 'map_file.pickle'
                 }
             ])      
 
