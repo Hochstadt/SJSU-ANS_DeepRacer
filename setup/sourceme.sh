@@ -118,6 +118,7 @@ then
   DATA_COL_PATH="$CUR_PATH/data_collector"
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
+  NAVIGATOR_CAR="$CUR_PATH/navigation_module/navigator_car"
 
   cd $DEP_PATH
 
@@ -307,6 +308,20 @@ then
       source $PID_CONTROL_PATH/install/setup.bash
     fi 
   fi
+  
+  #navigator car
+  ##########################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $NAVIGATOR_CAR/build ]
+    then
+      echo "Building navigator car package"
+      cd $NAVIGATOR_CAR && colcon build
+    fi
+    source $NAVIGATOR_CAR/install/setup.bash
+  fi
+
 elif [ $1 = "host" ]
 then
   ####################################################################
@@ -319,6 +334,8 @@ then
   MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
   ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
   ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
+  NAVIGATOR_HOST="$CUR_PATH/navigation_module/navigator_host"
+
   #Rviz interface
   cd $CUR_PATH
   if [ ! -d "$RVIZ_INF/build" ]
@@ -365,18 +382,19 @@ then
   fi
   source $ANS_SERVER/install/setup.bash
 
-  #map_loader
+  #navigator_host
   ##########################################33
     
   cd $CUR_PATH
-  if [ ! -d "$MAP_LOADER/build" ]
+  if [ ! -d "$NAVIGATOR_HOST/build" ]
   then
-    echo "building map loader"
-    cd $MAP_LOADER && colcon build
+    echo "building navigator host"
+    cd $NAVIGATOR_HOST && colcon build
   else
-    echo "map loader already built"
+    echo "navigator host already built"
   fi
-  source $MAP_LOADER/install/local_setup.bash
+  source $NAVIGATOR_HOST/install/setup.bash
+
   
 else
   echo "'$1' is not an understood argument, try one of the following"
