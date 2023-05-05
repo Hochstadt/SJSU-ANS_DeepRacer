@@ -68,7 +68,7 @@ private:
     //Generate Point Cloud Message
     sensor_msgs::msg::PointCloud2 mapMessage;
     pcl::toROSMsg(*mapCloud, mapMessage);
-    mapMessage.header.frame_id = "/odom";
+    mapMessage.header.frame_id = "odom";
 
     // Create Publish Navigation Map
     mMapCloudPub->publish(mapMessage);  
@@ -81,7 +81,8 @@ private:
   
     //Convert input file to Occupancy grid
     nav_msgs::msg::OccupancyGrid occupancy_grid_msg;
-    nav2_map_server::loadMapFromYaml(occ_map.c_str(), occupancy_grid_msg);
+    nav2_map_server::loadMapFromYaml(request->file_path, occupancy_grid_msg);
+    occupancy_grid_msg.header.frame_id = "odom";
 
     // Create Publish Occupancy Map
     mMapOccupyPub->publish(occupancy_grid_msg);  
@@ -94,14 +95,14 @@ private:
 
     // Create PoseStamped Msg
     geometry_msgs::msg::PoseStamped pose_msg;
-    pose_msg.header.frame_id = "/odom";
-    pose_msg.pose.position.x = goal_state[0];
-    pose_msg.pose.position.y = goal_state[1];
-    pose_msg.pose.position.z = goal_state[2];
-    pose_msg.pose.orientation.x = goal_state[3];
-    pose_msg.pose.orientation.y = goal_state[4];
-    pose_msg.pose.orientation.z = goal_state[5];
-    pose_msg.pose.orientation.w = goal_state[6];
+    pose_msg.header.frame_id = "odom";
+    pose_msg.pose.position.x = request->pos_x;
+    pose_msg.pose.position.y = request->pos_y;
+    pose_msg.pose.position.z = request->pos_z;
+    pose_msg.pose.orientation.x = quat.getX();
+    pose_msg.pose.orientation.y = quat.getY();
+    pose_msg.pose.orientation.z = quat.getZ();
+    pose_msg.pose.orientation.w = quat.getW();
 
     // Create Publish Goal State
     mGoalStatePub->publish(pose_msg);  
