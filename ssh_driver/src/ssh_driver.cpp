@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/twist.hpp" 
+#include "geometry_msgs/msg/twist.hpp"
 #include "deepracer_interfaces_pkg/msg/servo_ctrl_msg.hpp"
 #include "deepracer_interfaces_pkg/srv/servo_gpio_srv.hpp"
 #include <chrono>
@@ -29,7 +29,7 @@ class SshDriver : public rclcpp::Node
             //setup quality of service profile (ref. deepracer)
             //keeplast - will keep single sample
             auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
-            //besteffort - will try to deliver samples, but may lose them if network is bad 
+            //besteffort - will try to deliver samples, but may lose them if network is bad
             qos.best_effort();
                                               //<deepracer_interfaces_pkg::msg::ServoCtrlMsg>
 	    mServoPub = this->create_publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>("/ctrl_pkg/servo_msg", qos);
@@ -43,7 +43,7 @@ class SshDriver : public rclcpp::Node
             RCLCPP_INFO(this->get_logger(), "Command Received");
             RCLCPP_INFO(this->get_logger(), "Linear: <%.2f, %.2f, %.2f>",
                 msg->linear.x, msg->linear.y, msg->linear.z );
-            RCLCPP_INFO(this->get_logger(), "Angular: <%.2f, %.2f, %.2f>", 
+            RCLCPP_INFO(this->get_logger(), "Angular: <%.2f, %.2f, %.2f>",
                 msg->angular.x, msg->angular.y, msg->angular.z);
             //Convert incoming messages appropriately
             float ang_x = float(msg->angular.x);
@@ -52,8 +52,8 @@ class SshDriver : public rclcpp::Node
             float lin_x = float(msg->linear.x);
             float lin_y = float(msg->linear.y);
             float lin_z = float(msg->linear.z);
-            //lower case k puts this in stop mode 
-            if(0.0 == abs(lin_x) + abs(lin_y) + abs(lin_z) + 
+            //lower case k puts this in stop mode
+            if(0.0 == abs(lin_x) + abs(lin_y) + abs(lin_z) +
               abs(ang_x) + abs(ang_y) + abs(ang_z)) {
               bStop = true;
               bReverse = false;
@@ -66,7 +66,7 @@ class SshDriver : public rclcpp::Node
               bStop = false;
               bDrive = false;
               bReverse = true;
-            } 
+            }
 
             if(bStop){
                 mThrottle = 0; mSteering = 0;
@@ -100,18 +100,18 @@ class SshDriver : public rclcpp::Node
                              break;
                          default:
                              break;
-                     } 
-                } 
+                     }
+                }
             } else if(bReverse){
                 RCLCPP_INFO(this->get_logger(), "reversing");
-                keyboard::Directions throttle_command = evalInput(lin_x, lin_y, lin_z, 
+                keyboard::Directions throttle_command = evalInput(lin_x, lin_y, lin_z,
                                                                 ang_x, ang_y, ang_z);
                 if(mThrottle == 0.0) {
                     //To start need down arrow to get positive throttle
                     if(throttle_command == keyboard::down) {
                         RCLCPP_INFO(this->get_logger(), "Applying initial reverese");
                         mThrottle = THROTTLE_MIN;
-                    } 
+                    }
                 } else {
                     switch(throttle_command){
                         case keyboard::down:
@@ -127,10 +127,10 @@ class SshDriver : public rclcpp::Node
                             break;
                         default:
                             break;
-                    
+
                     }
-                } 
-            }                
+                }
+            }
 
             //Steering
             if(bDrive || bReverse){
@@ -138,25 +138,25 @@ class SshDriver : public rclcpp::Node
                 keyboard::Directions steering_command = evalInput(lin_x, lin_y, lin_z, ang_x, ang_y, ang_z);
                 switch(steering_command) {
                     case keyboard::right:
-                        //go right 
+                        //go right
                         mSteering-=STEERING_STEP;
                         mSteering = std::max(mSteering, float(-1.0*STEERING_MAX));
                         RCLCPP_INFO(this->get_logger(), "Veering right");
                         break;
                     case keyboard::left:
-                        //go left 
+                        //go left
                         mSteering+=STEERING_STEP;
                         mSteering = std::min(mSteering, float(STEERING_MAX));
                         RCLCPP_INFO(this->get_logger(), "Veering left");
                         break;
                     default:
                         break;
-                } 
-                
+                }
 
-                
+
+
             }
-        
+
 
 
             RCLCPP_INFO(this->get_logger(), "Throttle %.2f", mThrottle);
@@ -164,32 +164,34 @@ class SshDriver : public rclcpp::Node
 
             if(adjustSettings()) {
                 RCLCPP_INFO(this->get_logger(), "Message sent correctly");
-		auto servoMsg = deepracer_interfaces_pkg::msg::ServoCtrlMsg();
+                auto servoMsg = deepracer_interfaces_pkg::msg::ServoCtrlMsg();
                 servoMsg.angle = mSteering;
                 if(bReverse){
                     servoMsg.throttle = -1.0*mThrottle;
                 } else {
                     servoMsg.throttle = mThrottle;
                 }
-		mServoPub->publish(servoMsg);                                 	
+                // TODO - Uncomment this! Temporary to give me servo control. The logic here for sending servo messages
+                //        isn't really compatible with the joystick control in the GUI. Using "cmdvel_to_servo_pkg" for now
+                // mServoPub->publish(servoMsg);
             }
         }
 
-        keyboard::Directions evalInput(const float & lin_x, const float & lin_y, const float & lin_z, 
+        keyboard::Directions evalInput(const float & lin_x, const float & lin_y, const float & lin_z,
             const float & ang_x, const float & ang_y, const float & ang_z)
         {
             //This will check for certain conditions: (should turn into enum)
             if(lin_x > 0.0 && lin_y == 0.0 && lin_z == 0.0 && ang_x == 0.0 && ang_y == 0.0 && ang_z == 0.0){
                 //up arrow
                 return keyboard::up;
-            } else if(lin_x < 0.0 && lin_y == 0.0 && lin_z == 0.0 
+            } else if(lin_x < 0.0 && lin_y == 0.0 && lin_z == 0.0
                 && ang_x == 0.0 && ang_y == 0.0 && ang_z == 0.0){
                 //down arrow
-                return keyboard::down; 
+                return keyboard::down;
             } else if(lin_x == 0.0 && lin_y == 0.0 && lin_z == 0.0
                 && ang_x == 0.0 && ang_y == 0.0 && ang_z < 0.0){
                 //right arrow
-                return keyboard::right; 
+                return keyboard::right;
             } else if(lin_x == 0.0 && lin_y == 0.0 && lin_z == 0.0
                 && ang_x == 0.0 && ang_y == 0.0 && ang_z > 0.0){
                 //left arrow
@@ -199,7 +201,7 @@ class SshDriver : public rclcpp::Node
             return keyboard::unk;
 
         }
-        bool adjustSettings() 
+        bool adjustSettings()
         {
             RCLCPP_INFO(this->get_logger(), "Adjusting Settings");
             if(bStop)
@@ -209,7 +211,7 @@ class SshDriver : public rclcpp::Node
                     //turn off the GPIO
                     bServoGPIOOn = false;
 		    if(!disableGPIO()){return false;}
-			    
+
                 }
             }
             if(!bStop)
@@ -235,7 +237,7 @@ class SshDriver : public rclcpp::Node
 				return false;
 			}
 			RCLCPP_INFO(this->get_logger(), "service not available, continuing the wait...");
-		}	
+		}
 		auto result = mServoGPIOClient->async_send_request(servo_gpio_request);
 		return true;
 
@@ -250,7 +252,7 @@ class SshDriver : public rclcpp::Node
 				return false;
 			}
 			RCLCPP_INFO(this->get_logger(), "service not available, continuing the wait...");
-		}	
+		}
 		auto result = mServoGPIOClient->async_send_request(servo_gpio_request);
 		return true;
 

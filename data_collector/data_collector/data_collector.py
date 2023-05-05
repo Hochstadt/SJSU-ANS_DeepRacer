@@ -100,7 +100,11 @@ class dataCollector(Node):
 
         def activate_callback(self, request, response):
             success = True
-            if request.activate_video == 1 and self.bStreamVideo == False:
+            if request.activate_video == 1:
+                if self.bStreamVideo == True:
+                    self.get_logger().info('Video active requested when video is already streaming, ignoring..')
+                    response.error = False
+                    return response
                 self.get_logger().info('Starting video stream (Data collect command moved to the GUI! Edit me to change)')
                 # If you want to tie video + data collect together uncomment below
                 # self.bCollectData = True
