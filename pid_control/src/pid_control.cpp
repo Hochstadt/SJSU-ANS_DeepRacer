@@ -3,6 +3,7 @@
 #include "deepracer_interfaces_pkg/msg/servo_ctrl_msg.hpp"
 #include "deepracer_interfaces_pkg/srv/servo_gpio_srv.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include <chrono>
 #include <cstdio>
 #include <memory>
@@ -25,6 +26,8 @@ class PIDControl : public rclcpp::Node
                 "/imu/data_raw", 10, std::bind(&PIDControl::acceptImu, this, _1));
 	    mPositionSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
 	        "/localization/pose", 10, std::bind(&PIDControl::acceptPose, this, _1));
+	    mRouteSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+                "/route/next", 10, std::bind(&PIDControl::acceptRoute, this, _1));
 	    auto ServoGPIOClient = this->create_client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>("/servo_pkg/servo_gpio");
             auto servo_gpio_request = std::make_shared<deepracer_interfaces_pkg::srv::ServoGPIOSrv::Request>();
 	    sleep(5);
@@ -34,29 +37,22 @@ class PIDControl : public rclcpp::Node
             //besteffort - will try to deliver samples, but may lose them if network is bad
             qos.reliable();
 
-            x_total=0;
-            y_total=0;
-
-	    x_calib=0;
 	    y_calib=0;
-	    z_calib=0;
 
-	    x_rot=0;
-	    y_rot=0;
 	    z_rot=0;
 
-	    target=0;
+	    //TODO make target variable
+	    target=40;
 	    integ=0;
 	    old_error=0;
 	    throt=.1;
 	    est_speed=0;
 	    est_move=0;
-	    last_accel=0;
-	    last_stop=0;
-	    z_turn=0;
+	    est_angle=0;
 	    angle=0;
-	    rot_calib=0;
-	    rot_calib_rolling=0;
+
+	    pose_recv=false;
+
 
 
             mServoPub = this->create_publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>("/ctrl_pkg/servo_msg", qos);
@@ -71,7 +67,35 @@ class PIDControl : public rclcpp::Node
 private:
         void acceptPose(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 	{
-	
+		if(pose_recv)
+		{
+			double delta_x=last_pose.pose.position.x-msg->pose.position.x;
+			double delta_y=last_pose.pose.position.y-msg->pose.position.y;
+			double movement=sqrt(delta_x*delta_x+delta_y*delta_y);
+			double time=msg->header.stamp.nanosec-last_pose.header.stamp.nanosec;
+			time=time/1000000000;
+			if(msg->header.stamp.sec!=last_pose.header.stamp.sec)
+			{
+				time+=1;
+			}
+			//TODO guess at error
+			est_speed=movement/time;
+			est_angle=msg->pose.orientation.z;
+
+		}
+		else
+		{
+			pose_recv=true;
+		}
+		last_pose=*msg;
+	}
+
+	void acceptRoute(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+        {
+		double delta_x=last_pose.pose.position.x-msg->pose.position.x;
+		double delta_y=last_pose.pose.position.y-msg->pose.position.y;
+		atan(delta_x/delta_y);
+
 	}
 
         void acceptImu(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -94,7 +118,7 @@ private:
 		double PID=P+I+D;
 		auto servoMsg = deepracer_interfaces_pkg::msg::ServoCtrlMsg();
 		throt+=PID;
-		RCLCPP_INFO(this->get_logger(),"%f,%f,%f,%f,%f",target,est_speed,throt,z_turn,angle);
+		RCLCPP_INFO(this->get_logger(),"%f,%f,%f,%f,%f",target,est_speed,throt,est_angle,angle);
 		if(throt>1)
 		{
 			throt=1;
@@ -103,8 +127,8 @@ private:
 		{
 			throt=.1;
 		}
-		z_turn+=msg->angular_velocity.z;
-		double ang_error=z_turn;
+		est_angle+=msg->angular_velocity.z-rot_calib;
+		double ang_error=est_angle;
 		angle+=ang_error*.0001;
 		if(angle<-1)
 		{
@@ -128,32 +152,24 @@ private:
 
 	rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr mIMUSubscription;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mPositionSubscription;
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mRouteSubscription;
 	rclcpp::Publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>::SharedPtr mServoPub;
-	double x_calib;
 	double y_calib;
-	double z_calib;
-        double x_calib_rolling;
-        double y_calib_rolling;
-        double z_calib_rolling;
-	double last_accel;
-	double last_stop;
-	double z_turn;
+	
+	double est_angle;
 	double angle;
 	double rot_calib;
-	double rot_calib_rolling;
 
-	double x_total;
-	double y_total;
-	double x_rot;
-	double y_rot;
 	double z_rot;
-	int calib_time;
+	
 	double target;
 	double integ;
 	double old_error;
 	double throt;
 	double est_speed;
 	double est_move;
+	geometry_msgs::msg::PoseStamped last_pose;
+	bool pose_recv;
 
 };
 
