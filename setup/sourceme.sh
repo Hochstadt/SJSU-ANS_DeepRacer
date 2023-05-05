@@ -105,6 +105,7 @@ then
   echo "Car build selected."
   #Relevant paths for dependencies
   CAM_PATH="$DEP_PATH/aws-deepracer-camera-pkg/camera_pkg"
+  IMU_PATH="$DEP_PATH/aws-deepracer-imu-pkg/imu_pkg"
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
@@ -112,6 +113,7 @@ then
 
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
+  PID_CONTROL_PATH="$CUR_PATH/pid_control"
   DATA_COL_PATH="$CUR_PATH/data_collector"
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
@@ -136,6 +138,26 @@ then
   source $CAM_PATH/install/local_setup.bash
 
   cd $DEP_PATH
+
+  if [ ! -d "$IMU_PATH/build" ]
+  then
+    #Check if already cloned
+    if [ ! -d $IMU_PATH ]
+    then
+      echo "Cloning deepracer imu package"
+      git clone https://github.com/robofoundry/aws-deepracer-imu-pkg.git
+    fi
+    echo "Changing device address to possible new standard"
+    sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
+    echo "Building imu package"
+    cd $IMU_PATH && colcon build
+  else
+    echo "imu package already exists and is built"
+  fi
+  source $IMU_PATH/install/local_setup.bash
+
+  cd $DEP_PATH
+
   
   # rplidar 
   #############################################################
@@ -260,6 +282,19 @@ then
     fi
     source $CONTROLLER_PATH/install/setup.bash
   fi
+
+  #udp_sender pkg
+  ##########################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $PID_CONTROL_PATH/build ]
+    then
+        echo "Building pid_control package"
+        cd $PID_CONTROL_PATH && colcon build
+    fi
+    source $PID_CONTROL_PATH/install/setup.bash
+  fi 
 elif [ $1 = "host" ]
 then
   ####################################################################
