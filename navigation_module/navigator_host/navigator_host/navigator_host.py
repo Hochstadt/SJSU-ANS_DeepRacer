@@ -26,6 +26,7 @@ import pickle
 import numpy as np
 from time import sleep
 from datetime import datetime
+from scipy.spatial.transform import Rotation as R
 
 
 
@@ -171,7 +172,8 @@ class navigatorHost(Node):
             #############################################################################
             #For now creating my own path though
             pos = np.array([[self.point.x, self.point.y]]).transpose()
-            path, goal_state = self.get_hand_path(pos)
+            orientation = self.quat_to_theta(self.quat)
+            path, goal_state = self.get_hand_path(pos, orientation)
             #But would take the self.debug_point_array, and the self.point and self.quaternion to figure
             #out the path....
 
@@ -202,7 +204,12 @@ class navigatorHost(Node):
         
         return [qx, qy, qz, qw]
     
-    def get_hand_path(self, starting_pos):
+    def quat_to_theta(self, q):
+        r = R.from_quat([q.x, q.y, q.z, q.w])
+        e = r.as_euler('zyx')
+        return e[0]
+    
+    def get_hand_path(self, starting_pos, orientation):
 
         goal = np.array([[5, 0]]).transpose()
         hand_path = np.array([[4.5, -2.5], [5, -2], [5, -1]]).transpose()
@@ -210,7 +217,6 @@ class navigatorHost(Node):
         hand_path = np.hstack((hand_path, goal))
         sample_num = 5
         total_pts = np.array([])
-        total_rots = -1
         for i in range(0, hand_path.shape[1]-1):
             st_x = hand_path[0, i]
             st_y = hand_path[1, i]
@@ -218,20 +224,37 @@ class navigatorHost(Node):
             ed_y = hand_path[1, i + 1]
 
             #define this vector
-            vect = np.array([ed_x - st_x,ed_y - st_y])
-            x_unit = np.array([1, 0])
-            rotangle = np.arccos(np.dot(vect, x_unit)/(np.linalg.norm(x_unit) * np.linalg.norm(vect)))
+            #vect = np.array([ed_x - st_x,ed_y - st_y])
+            #x_unit = np.array([1, 0])
+            #rotangle = np.arccos(np.dot(vect, x_unit)/(np.linalg.norm(x_unit) * np.linalg.norm(vect)))
             
             pts_x = np.linspace(st_x, ed_x, num=sample_num)
             pts_y = np.linspace(st_y, ed_y, num=sample_num)
             if np.any(total_pts):
                 total_pts = np.hstack((total_pts, np.array([pts_x[0:-1], pts_y[0:-1]])))
-                total_rots = np.hstack((total_rots, np.ones(sample_num)*rotangle))
+                #rots = np.linspace(total_rots[-1], rotangle, num=sample_num)
+                #total_rots = np.hstack((total_rots, np.ones(sample_num)*rotangle))
                 
             else:
-                total_pts = np.array([pts_x[1:-1], pts_y[1:-1]])
-                total_rots = np.ones(sample_num) * rotangle
+                #rots = np.linspace(orientation, rotangle, num=sample_num)
+                total_pts = np.array([pts_x[0:-1], pts_y[0:-1]])
+                #total_rots = rots
+
+        #Run through and define the tangent for each path starting with the next index
+        total_rots = [orientation]
+        for i in range(1, total_pts.shape[1] - 1):
+            pt_x1 = total_pts[0, i]
+            pt_y1 = total_pts[1, i]
+            pt_x2 = total_pts[0, i+1]
+            pt_y2 = total_pts[1, i+1]
+
+            dx = pt_x2 - pt_x1
+            dy = pt_y2 - pt_y1
+            total_rots.append(np.arctan(dy/dx))
+        #Hopefully this is tangenet enough to do this
+        total_rots.append(total_rots[-1])
         total_rots = np.array(total_rots)
+        self.get_logger().info('Rotation size %d' % total_rots.shape[0])
         #Now convert to the appropriate parameters
         epoch = datetime.now()
         myHeader = Header()
