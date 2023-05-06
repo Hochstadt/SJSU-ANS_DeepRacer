@@ -5,7 +5,7 @@ import launch_ros.actions
 from launch_ros.actions import Node
 from launch import LaunchDescription
 
-
+bIMU = False
 def generate_launch_description():
 
     navigator_car = Node(
@@ -66,7 +66,7 @@ def generate_launch_description():
         executable='vel_controller',
         parameters=[
             {
-                'bIMU': False
+                'bIMU': bIMU
             }
             ]
         )
@@ -81,14 +81,22 @@ def generate_launch_description():
         executable='imu_node'
     )
 
-
-    return LaunchDescription([
-        navigator_car,
-        localization,
-        rplidar_node,
-        lidar_scan_acq,
-        vel_controller,
-        servo_pkg,
-        imu_pkg
-    ])
-
+    if bIMU == True:
+        return LaunchDescription([
+            navigator_car,
+            localization,
+            rplidar_node,
+            lidar_scan_acq,
+            vel_controller,
+            servo_pkg,
+            imu_pkg
+        ])
+    else:
+        return LaunchDescription([
+            navigator_car,
+            localization,
+            rplidar_node,
+            lidar_scan_acq,
+            vel_controller,
+            servo_pkg,
+        ])

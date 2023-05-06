@@ -32,6 +32,7 @@ class velController(Node):
         self.bCalibrated = False
         self.bHaveData = False
         self.calibration_time = 10 #seconds
+        self.bCmdReceived = True
         bIMU = False
         self.declare_parameter('bIMU', bIMU)
         self.bIMU = self.get_parameter('bIMU').get_parameter_value().bool_value
@@ -70,7 +71,7 @@ class velController(Node):
         self.x_car = []
         self.y_car = []
         self.theta_world = []
-        self.prev_time = -1
+        self.prev_time = [] 
         self.prev_pt_car = -1
         self.pose_subscriber = self.create_subscription(PoseStamped,
                                                         '/localization/pose',
@@ -142,7 +143,7 @@ class velController(Node):
                 # the origin will be constantly redefined where it will
                 # always be the start of the way point. )
             
-            if self.prev_time > 0:
+            if self.bHaveData == True:
 
                 pt = msg.pose.position
                 q = msg.pose.orientation            
@@ -157,46 +158,47 @@ class velController(Node):
                 #identify instantaneous velocity...
                 meas_vel_x_car = (pt_car[0] - self.prev_pt_car[0])/dtime
                 meas_vel_y_car = (pt_car[1] - self.prev_pt_car[1])/dtime
+                if self.bCmdReceived == True:
+                    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
+                    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
 
-                self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
-                self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
-
-                #Update the PID
-                vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                rot_err = self.angvel_pid.update(float(meas_theta_world))
-                self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
+                    #Update the PID
+                    vel_err = self.vel_pid.update(float(meas_vel_x_car))
+                    rot_err = self.angvel_pid.update(float(meas_theta_world))
+                    self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
             
-                mThrottle = self.vel_pid.output
-                mSteering = self.angvel_pid.output
-                if mThrottle is not None:
+                    mThrottle = self.vel_pid.output
+                    mSteering = self.angvel_pid.output
+                    if mThrottle is not None:
 
-                    servoMsg = ServoCtrlMsg()
-                    if mThrottle > 1.0:
-                        mThrottle = 1.0
-                    elif mThrottle < -1.0:
-                        mThrottle = -1.0
-                    
-                    if mSteering > 1.0:
-                        mSteering = 1.0
-                    elif mSteering < -1.0:
-                        mSteering = -1.0
+                        servoMsg = ServoCtrlMsg()
+                        if mThrottle > 1.0:
+                            mThrottle = 1.0
+                        elif mThrottle < -1.0:
+                            mThrottle = -1.0
+                        
+                        if mSteering > 1.0:
+                            mSteering = 1.0
+                        elif mSteering < -1.0:
+                            mSteering = -1.0
 
-                    servoMsg.throttle = mThrottle
-                    self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (mThrottle, mSteering))
-                    servoMsg.angle = mSteering
-                    self.throttle_pub.publish(servoMsg)
+                        servoMsg.throttle = mThrottle
+                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (mThrottle, mSteering))
+                        servoMsg.angle = mSteering
+                        self.throttle_pub.publish(servoMsg)
                 else:
                     self.get_logger().info('mThrottle is none')
 
-            else:
-                #need to define prev items
-                self.prev_time = datetime.now()
-                pt = msg.pose.position
-                q = msg.pose.orientation  
-                r = R.from_quat([q.x, q.y, q.z, q.w])
-                Rmat = r.as_matrix()                
-                self.prev_pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
+            #else:
+            #need to define prev items
+            self.prev_time = datetime.now()
+            self.bHaveData = True
+            pt = msg.pose.position
+            q = msg.pose.orientation  
+            r = R.from_quat([q.x, q.y, q.z, q.w])
+            Rmat = r.as_matrix()                
+            self.prev_pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
 
 
 
@@ -293,6 +295,7 @@ class velController(Node):
     def cmd_listener(self, msg):
         
         self.get_logger().info('Incoming Command Received: <%.4f> AND <%.4f>' % (msg.data[0], msg.data[1]))
+        self.bCmdReceived == True
         #I suppose + rotation is left and - is right
         
         #duration = datetime.now() - self.start_time 

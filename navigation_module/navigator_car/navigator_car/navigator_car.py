@@ -69,21 +69,21 @@ class navigatorCar(Node):
                 if self.path_index >= len(self.path.poses):
                     self.get_logger().error('Error - out of poses in the path, are you sure you are not at the end?')
                 else:
-                    self.next_pose = self.path.poses[self.pose_index]
-                    self.pose_index+=1
+                    self.next_pose = self.path.poses[self.path_index].pose
+                    self.path_index+=1
         
-            self.get_logger().info('Current pos <%.4, %.4> %.4 deg vs. Waypoint pos <%.4, %.4> %.4 deg' 
+            self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
                                     % (cur_pos.x, cur_pos.y, np.rad2deg(cur_theta),
                                         way_pos.x, way_pos.y, np.rad2deg(way_theta)))
-            self.get_logger().info('Deltas <%.4f, %.4f> %.4 deg' %
+            self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
                                     (dx, dy, np.rad2deg(dtheta)))
 
             #update the command            
             cmd_theta = way_theta
             cmd_vel =  self.avg_vel
             cmd = Float32MultiArray()
-            cmd.data[0] = cmd_vel
-            cmd.data[1] = cmd_theta
+            cmd.data.append(cmd_vel)
+            cmd.data.append(cmd_theta)
             #because we are using the localizer as the measurement we have the global alignmetn, thus we can
             #force our control loop to align in that space making any transofrms or things uncecessary. With that
             #said if a point is way out of the turn radius or something, the car may continually try to turn trying
@@ -91,7 +91,7 @@ class navigatorCar(Node):
             #a timer to indicate a 'missed way point' and move on to the enxt one. This can be done by looking at
             #the speed commanded (and recorded...), and deduce how long it should have taken to get to the waypoint
 
-            self.cmd_publisher(cmd)
+            self.cmd_publisher.publish(cmd)
                 
     def path_listener(self, msg):
         self.path = msg
@@ -112,12 +112,13 @@ class navigatorCar(Node):
             self.x_limit = self.BOUND_CONSTANT * abs(dx)
             self.y_limit = self.BOUND_CONSTANT * abs(dy)
             self.start_pose = start_pose
+            self.get_logger().info('Path length identified as %d, indexing at %d' % (len(self.path.poses),self.path_index))
             self.next_pose = self.path.poses[self.path_index].pose
             
             #self.projected_time = dx/self.avg_vel
             
             self.path_index+=1
-            self.bNOiseChar == True
+            self.bNoiseChar = True
         
         #deduce the next waypoint as ideally the next one in the chain...        
         self.bReceivedPath = True

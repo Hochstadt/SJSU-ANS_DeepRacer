@@ -16,7 +16,7 @@ CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
 bError=0
-bLC=0
+bLC=1
 
 #Default ros2 stuff
 if [ ! -d "/opt/ros/foxy" ]
@@ -119,6 +119,7 @@ then
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
   NAVIGATOR_CAR="$CUR_PATH/navigation_module/navigator_car"
+  CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
 
   cd $DEP_PATH
 
@@ -236,6 +237,7 @@ then
         echo "Building ssh_driver package"
         cd $SSH_DRIVER_PATH && colcon build
     fi
+    echo "sourcing ssh_driver"
     source $SSH_DRIVER_PATH/install/setup.bash
   fi
 
@@ -249,6 +251,7 @@ then
       echo "Building data collector package"
       cd $DATA_COL_PATH && colcon build
     fi
+    echo "sourcing data collector"
     source $DATA_COL_PATH/install/setup.bash
   fi
   #localizer
@@ -261,6 +264,7 @@ then
       echo "Building localization package"
       cd $LOCALIZER_PATH && colcon build
     fi
+    echo "sourcing localizer"
     source $LOCALIZER_PATH/install/setup.bash
   fi
     
@@ -274,6 +278,7 @@ then
       echo "Building lidar acquisition package"
       cd $LIDARACQ_PATH && colcon build
     fi
+    echo "sourcing lidar acq"
     source $LIDARACQ_PATH/install/setup.bash
   fi
 
@@ -289,6 +294,7 @@ then
         echo "Building controller package"
         cd $CONTROLLER_PATH && colcon build
       fi
+      echo "Sourcing controller"
       source $CONTROLLER_PATH/install/setup.bash
     fi
   fi
@@ -305,6 +311,7 @@ then
           echo "Building pid_control package"
           cd $PID_CONTROL_PATH && colcon build
       fi
+      echo "sourcing controller"
       source $PID_CONTROL_PATH/install/setup.bash
     fi 
   fi
@@ -319,6 +326,7 @@ then
       echo "Building navigator car package"
       cd $NAVIGATOR_CAR && colcon build
     fi
+    echo "Sourcing navigator_car"
     source $NAVIGATOR_CAR/install/setup.bash
   fi
 
