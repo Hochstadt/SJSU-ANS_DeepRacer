@@ -24,7 +24,7 @@ from scipy.spatial.transform import Rotation as R
 
 
 class velController(Node):
-    SAMPLE_TIME =.5 
+    SAMPLE_TIME =.1 
     def __init__(self):
         super().__init__('vel_controller')
 
@@ -32,7 +32,7 @@ class velController(Node):
         self.bCalibrated = False
         self.bHaveData = False
         self.calibration_time = 10 #seconds
-        self.bCmdReceived = True
+        self.bCmdReceived = False 
         bIMU = False
         self.declare_parameter('bIMU', bIMU)
         self.bIMU = self.get_parameter('bIMU').get_parameter_value().bool_value
@@ -113,12 +113,11 @@ class velController(Node):
             self.mSteering = 0
         else:
             #vPID
-            vP = .7 
-            vI = 0.03 
-            vD = 0.001 
+            vP = 2 
+            vI = 0.005
+            vD = 0.01 
             self.vel_pid = PID(vP, vI, vD)
             self.vel_pid.setSampleTime(self.SAMPLE_TIME)
-            self.vel_pid.setWindup(15)
             #seems to increase with velocity command rate
             # 2 - 1 second commandnig/update
             self.constant_theta_mult = 2*5 
@@ -126,9 +125,9 @@ class velController(Node):
             #self.tracked_vel = 0
 
             #angvelPID
-            avP = 10
-            avI = 1
-            avD = 1
+            avP = 2 
+            avI = 0.01
+            avD = 0.001
             self.angvel_pid = PID(avP, avI, avD)
             self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
             self.mSteering = 0
@@ -156,11 +155,11 @@ class velController(Node):
                 meas_theta_world = eangles[0]
                 pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
                 #identify instantaneous velocity...
-                self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
-                                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
-                                        pt_car[0] - self.prev_pt_car[0],
-                                        pt_car[1] - self.prev_pt_car[1]))
-                self.get_logger().info('Delta Time: %.4f' % dtime)
+                #self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
+                #                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
+                #                        pt_car[0] - self.prev_pt_car[0],
+                #                        pt_car[1] - self.prev_pt_car[1]))
+                #self.get_logger().info('Delta Time: %.4f' % dtime)
 
                 meas_vel_x_car = (pt_car[0] - self.prev_pt_car[0])/dtime
                 meas_vel_y_car = (pt_car[1] - self.prev_pt_car[1])/dtime
@@ -188,13 +187,13 @@ class velController(Node):
                             mSteering = 1.0
                         elif mSteering < -1.0:
                             mSteering = -1.0
-
+                        mSteering = mSteering * -1.0
                         servoMsg.throttle = mThrottle
                         self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (mThrottle, mSteering))
                         servoMsg.angle = mSteering
                         self.throttle_pub.publish(servoMsg)
-                else:
-                    self.get_logger().info('mThrottle is none')
+                    else:
+                        self.get_logger().info('mThrottle is none')
 
             #else:
             #need to define prev items
@@ -301,7 +300,7 @@ class velController(Node):
     def cmd_listener(self, msg):
         
         self.get_logger().info('Incoming Command Received: <%.4f> AND <%.4f>' % (msg.data[0], msg.data[1]))
-        self.bCmdReceived == True
+        self.bCmdReceived = True
         #I suppose + rotation is left and - is right
         
         #duration = datetime.now() - self.start_time 

@@ -18,6 +18,8 @@ class navigatorCar(Node):
         super().__init__('navigator_car')
         self.bReceivedPath = False
         self.bNoiseChar = False
+        self.bFirstPath = True
+        self.noise_time = 2
         self.avg_vel = .3 
         self.path_index = 1
 
@@ -95,7 +97,19 @@ class navigatorCar(Node):
                 
     def path_listener(self, msg):
         self.path = msg
+        #do this to let some time pass allowing for better noise characteirzation
+        #if self.bFirstPath == True:
+        #    self.prev_time = datetime.now() 
+        #    self.bFirstPath = False
+
+        #duration = (prev_time - datetime.now()).total_seconds() 
+
+        #if self.bNoiseChar == False and duration > self.noise_time
+        
+        
         if self.bNoiseChar == False:
+            self.get_logger().info('Sleeping for 2 seconds before ingesting path')
+            sleep(2.0)        
             start_pose = self.path.poses[0].pose
             #Try to understand the deviations from the current state (as ideally
             # they should be near identical. Can characterize the noise this way)
@@ -105,6 +119,10 @@ class navigatorCar(Node):
             theta_start = self.quat_to_theta(qstart)
             qnow = start_pose.orientation            
             theta_now = self.quat_to_theta(qnow)
+            self.get_logger().info('Theta Now %.4f' % theta_now)
+            self.get_logger().info('Theta Start Path %.4f' % theta_now)
+
+            self.get_logger().info('Current State Pos %.4f, vs. path start %.4f' % (self.current_state.position.x, start_pose.position.x))
             dtheta = theta_now - theta_start
 
             #define the noise values
