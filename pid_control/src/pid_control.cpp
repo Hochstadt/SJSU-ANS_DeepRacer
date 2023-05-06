@@ -4,6 +4,7 @@
 #include "deepracer_interfaces_pkg/srv/servo_gpio_srv.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include <chrono>
 #include <cstdio>
 #include <memory>
@@ -26,8 +27,8 @@ class PIDControl : public rclcpp::Node
                 "/imu/data_raw", 10, std::bind(&PIDControl::acceptImu, this, _1));
 	    mPositionSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
 	        "/localization/pose", 10, std::bind(&PIDControl::acceptPose, this, _1));
-	    mRouteSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-                "/route/next", 10, std::bind(&PIDControl::acceptRoute, this, _1));
+	    mRouteSubscription = this->create_subscription<nav_msgs::msg::Path>(
+                "/localization/route", 10, std::bind(&PIDControl::acceptRoute, this, _1));
 	    auto ServoGPIOClient = this->create_client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>("/servo_pkg/servo_gpio");
             auto servo_gpio_request = std::make_shared<deepracer_interfaces_pkg::srv::ServoGPIOSrv::Request>();
 	    sleep(5);
@@ -37,12 +38,16 @@ class PIDControl : public rclcpp::Node
             //besteffort - will try to deliver samples, but may lose them if network is bad
             qos.reliable();
 
+	    Path.reset();
+
+	    path_index=0;
+
 	    y_calib=0;
 
 	    z_rot=0;
 
 	    //TODO make target variable
-	    target=40;
+	    target=0;
 	    integ=0;
 	    old_error=0;
 	    throt=.1;
@@ -88,14 +93,43 @@ private:
 			pose_recv=true;
 		}
 		last_pose=*msg;
+
+		if(Path!=nullptr)
+		{
+			target=40;
+			auto nextPose=Path->poses[path_index];
+			double delta_y=-1;
+			while(delta_y<0)
+			{
+                        	delta_y=nextPose.pose.position.y-msg->pose.position.y;
+				if(delta_y<0)
+				{
+					if(path_index!=Path->poses.size())
+					{
+						path_index++;
+					}
+					else
+					{
+						target =0;
+						Path.reset();
+						return;
+					}
+				}
+				else
+				{
+					double delta_x=nextPose.pose.position.x-msg->pose.position.x;
+				 	angle=atan(delta_y/delta_x);
+					return;
+				}
+			}
+
+		}
 	}
 
-	void acceptRoute(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+	void acceptRoute(const nav_msgs::msg::Path::SharedPtr msg)
         {
-		double delta_x=last_pose.pose.position.x-msg->pose.position.x;
-		double delta_y=last_pose.pose.position.y-msg->pose.position.y;
-		atan(delta_x/delta_y);
-
+		Path=msg;
+		path_index=0;
 	}
 
         void acceptImu(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -129,6 +163,7 @@ private:
 		}
 		est_angle+=msg->angular_velocity.z-rot_calib;
 		double ang_error=est_angle;
+		//TODO improve angle PID
 		angle+=ang_error*.0001;
 		if(angle<-1)
 		{
@@ -152,8 +187,11 @@ private:
 
 	rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr mIMUSubscription;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mPositionSubscription;
-	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mRouteSubscription;
+	rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr mRouteSubscription;
 	rclcpp::Publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>::SharedPtr mServoPub;
+
+	nav_msgs::msg::Path::SharedPtr Path;
+	unsigned int path_index;
 	double y_calib;
 	
 	double est_angle;
