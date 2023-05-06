@@ -113,6 +113,7 @@ class navigatorCar(Node):
             self.y_limit = self.BOUND_CONSTANT * abs(dy)
             self.start_pose = start_pose
             self.get_logger().info('Path length identified as %d, indexing at %d' % (len(self.path.poses),self.path_index))
+            self.get_logger().info('Bounds as 3 * <%.4f, %.4f> %.4f deg' % (self.x_limit, self.y_limit, np.rad2deg(self.theta_limit)))
             self.next_pose = self.path.poses[self.path_index].pose
             
             #self.projected_time = dx/self.avg_vel

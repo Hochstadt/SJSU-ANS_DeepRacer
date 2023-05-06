@@ -156,6 +156,12 @@ class velController(Node):
                 meas_theta_world = eangles[0]
                 pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
                 #identify instantaneous velocity...
+                self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
+                                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
+                                        pt_car[0] - self.prev_pt_car[0],
+                                        pt_car[1] - self.prev_pt_car[1]))
+                self.get_logger().info('Delta Time: %.4f' % dtime)
+
                 meas_vel_x_car = (pt_car[0] - self.prev_pt_car[0])/dtime
                 meas_vel_y_car = (pt_car[1] - self.prev_pt_car[1])/dtime
                 if self.bCmdReceived == True:
@@ -440,7 +446,7 @@ class velController(Node):
             cmd_angle = float(msg.data[1])
 
             self.vel_pid.SetPoint = cmd_vel
-            self.angvel_pid.setPoint = cmd_angle
+            self.angvel_pid.SetPoint = cmd_angle
 
         else:
             self.get_logger().info('Incoming Command Ignored')

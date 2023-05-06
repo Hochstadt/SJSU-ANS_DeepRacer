@@ -87,7 +87,6 @@ class navigatorHost(Node):
                                                    '/navigator_car/global_path', 
                                                    10)
         self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
-        self.goal_state = self.get_parameter('goal_state').get_parameter_value().double_array_value
 
     def publishMap(self):
         #Check if this map file exists 
