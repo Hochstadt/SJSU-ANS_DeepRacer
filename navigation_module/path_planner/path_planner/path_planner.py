@@ -140,9 +140,6 @@ class Path_Planner(Node):
         self.waitForPlan = True
 
     def store_current_state(self, currentMsg):
-            
-        # Inform that message was received
-        #self.get_logger().info("Current State received")
 
         # Initialize Goal State Pose
         self.currentState = State.from_pose(currentMsg.pose)
@@ -230,7 +227,6 @@ class Path_Planner(Node):
                     
                     if successor.dist_to(goal) < min(self.robot.width, self.robot.height):
                         final_state = successor
-                        self.get_logger().info(f'dist {successor.dist_to(goal)}, {goal.x}, {goal.y}, {successor.x}, {successor.y}')
                         return final_state
                         break
 
