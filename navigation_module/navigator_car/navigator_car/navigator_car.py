@@ -74,11 +74,11 @@ class navigatorCar(Node):
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.path_index+=1
         
-            self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
-                                    % (cur_pos.x, cur_pos.y, np.rad2deg(cur_theta),
-                                        way_pos.x, way_pos.y, np.rad2deg(way_theta)))
-            self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
-                                    (dx, dy, np.rad2deg(dtheta)))
+            #self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
+            #                        % (cur_pos.x, cur_pos.y, np.rad2deg(cur_theta),
+            #                            way_pos.x, way_pos.y, np.rad2deg(way_theta)))
+            #self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
+            #                        (dx, dy, np.rad2deg(dtheta)))
 
             #update the command            
             cmd_theta = way_theta

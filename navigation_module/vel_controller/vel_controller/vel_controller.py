@@ -113,9 +113,13 @@ class velController(Node):
             self.mSteering = 0
         else:
             #vPID
-            vP = 2 
-            vI = 0.005
-            vD = 0.01 
+            self.prev_vel = 0
+            #force accept cmd
+            self.prev_increment = 1000
+            self.mThrottle = 0
+            vP = .7
+            vI = 0.0008
+            vD = 0.000 
             self.vel_pid = PID(vP, vI, vD)
             self.vel_pid.setSampleTime(self.SAMPLE_TIME)
             #seems to increase with velocity command rate
@@ -125,7 +129,7 @@ class velController(Node):
             #self.tracked_vel = 0
 
             #angvelPID
-            avP = 2 
+            avP = 1.3
             avI = 0.01
             avD = 0.001
             self.angvel_pid = PID(avP, avI, avD)
@@ -141,6 +145,7 @@ class velController(Node):
                 #if origin not defined then do so (note 
                 # the origin will be constantly redefined where it will
                 # always be the start of the way point. )
+            flipR = R.from_euler('z', 0, degrees=True)
             
             if self.bHaveData == True:
 
@@ -150,50 +155,65 @@ class velController(Node):
                 dtime = (datetime.now() - self.prev_time).total_seconds()
 
                 
-                Rmat = r.as_matrix()
+                Rmat = np.matmul(flipR.as_matrix(), r.as_matrix())
                 eangles = r.as_euler('zyx')
                 meas_theta_world = eangles[0]
                 pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
                 #identify instantaneous velocity...
-                #self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
-                #                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
-                #                        pt_car[0] - self.prev_pt_car[0],
-                #                        pt_car[1] - self.prev_pt_car[1]))
+                self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
+                                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
+                                        pt_car[0] - self.prev_pt_car[0],
+                                        pt_car[1] - self.prev_pt_car[1]))
                 #self.get_logger().info('Delta Time: %.4f' % dtime)
-
-                meas_vel_x_car = (pt_car[0] - self.prev_pt_car[0])/dtime
+                #Seems like the frames are off, so just adding this absolute term so velocity is always positive
+                meas_vel_x_car = abs(pt_car[0] - self.prev_pt_car[0])/dtime
+                #compare self.prev_increment to what the speed change is detected as
                 meas_vel_y_car = (pt_car[1] - self.prev_pt_car[1])/dtime
-                if self.bCmdReceived == True:
+                if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
+                    self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
+                        (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
+                    
                     self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
                     self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
+                    #bad command just decrease throttle in case moving too fast, to get to a place where we understand velocity again
+                    tmpmThrottle = -.1
+                else:
+                    if self.bCmdReceived == True:
+                        self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
+                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
 
-                    #Update the PID
-                    vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                    rot_err = self.angvel_pid.update(float(meas_theta_world))
-                    self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
+                        #Update the PID
+                        vel_err = self.vel_pid.update(float(meas_vel_x_car))
+                        rot_err = self.angvel_pid.update(float(meas_theta_world))
+                        self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
             
-                    mThrottle = self.vel_pid.output
-                    mSteering = self.angvel_pid.output
-                    if mThrottle is not None:
-
+                        tmpmThrottle = self.vel_pid.output
+                        self.prev_increment = tmpmThrottle
+                        self.prev_vel = meas_vel_x_car
+                        mSteering = self.angvel_pid.output
+                if self.bCmdReceived == True:
+                    if tmpmThrottle is not None:
+                        self.mThrottle+=tmpmThrottle 
                         servoMsg = ServoCtrlMsg()
-                        if mThrottle > 1.0:
-                            mThrottle = 1.0
-                        elif mThrottle < -1.0:
-                            mThrottle = -1.0
+                        if self.mThrottle > 1.0:
+                            self.mThrottle = 1.0
+                        elif self.mThrottle < -1.0:
+                            #Assuming no backwards!
+                            self.mThrottle = 0
                         
                         if mSteering > 1.0:
                             mSteering = 1.0
                         elif mSteering < -1.0:
                             mSteering = -1.0
-                        mSteering = mSteering * -1.0
-                        servoMsg.throttle = mThrottle
-                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (mThrottle, mSteering))
+                        mSteering = mSteering * 1.0
+                        servoMsg.throttle = self.mThrottle
+                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (self.mThrottle, mSteering))
                         servoMsg.angle = mSteering
                         self.throttle_pub.publish(servoMsg)
-                    else:
-                        self.get_logger().info('mThrottle is none')
+                else:
+                    self.get_logger().info('mThrottle is none')
+                self.prev_vel = meas_vel_x_car
 
             #else:
             #need to define prev items
@@ -202,7 +222,7 @@ class velController(Node):
             pt = msg.pose.position
             q = msg.pose.orientation  
             r = R.from_quat([q.x, q.y, q.z, q.w])
-            Rmat = r.as_matrix()                
+            Rmat = np.matmul(flipR.as_matrix(), r.as_matrix())
             self.prev_pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
 
 
