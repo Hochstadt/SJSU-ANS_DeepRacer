@@ -45,9 +45,6 @@ class State:
     def dist_to(self, o_s):
         return ((self.x - o_s.x)**2 + (self.y - o_s.y)**2)**0.5
 
-    # TODO use here robot constraints
-    # TODO add angle checking
-    # TODO make constants much smaller
     def is_same_as(self, o_s):
         # Improoving this constant from 0.01 to 0.05 speed up my algorhytm 1000 times
         return self.dist_to(o_s) <= 0.05 # think a much better about this constant

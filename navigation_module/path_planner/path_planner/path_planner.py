@@ -87,8 +87,10 @@ class Path_Planner(Node):
         self.goalState    = State()
         self.occMap       = Map()
 
-        # Set waitForPlan flag to true
+        # Set flag for readiness
         self.waitForPlan = True
+        self.mapReady    = False
+        self.goalReady   = False
 
     def load_config(self):
 
@@ -127,6 +129,7 @@ class Path_Planner(Node):
 
         # Set waitForPlan flag to true
         self.waitForPlan = True
+        self.mapReady   = True
 
     def store_goal_state(self, goalMsg):
             
@@ -138,6 +141,7 @@ class Path_Planner(Node):
 
         # Set waitForPlan flag to true
         self.waitForPlan = True
+        self.goalReady   = True
 
     def store_current_state(self, currentMsg):
 
@@ -145,7 +149,7 @@ class Path_Planner(Node):
         self.currentState = State.from_pose(currentMsg.pose)
 
         # If no valid plan exists run planner
-        if self.waitForPlan:
+        if self.waitForPlan and self.goalReady and self.mapReady:
             self.generate_path_plan()
 
     def indicate_plan_request(self, msg):
@@ -156,6 +160,8 @@ class Path_Planner(Node):
     def generate_path_plan(self):
 
         self.get_logger().info("Planning was started")
+
+        t0 = time.time()
 
         # Calculate path if goal is reachable
         if self.occMap.is_allowed(self.goalState, self.robot):
@@ -185,6 +191,7 @@ class Path_Planner(Node):
                 self.mPathPub.publish(path)
 
                 # Set waitForPlan flag to false
+                self.get_logger().info(f"Path found in {(time.time() - t0)} s")
                 self.waitForPlan = False
 
             # if no valid solution found
@@ -225,7 +232,7 @@ class Path_Planner(Node):
 
                     # Stop if goal state is achieved
                     
-                    if successor.dist_to(goal) < min(self.robot.width, self.robot.height):
+                    if successor.dist_to(goal) < max(self.moves[0].length, min(self.robot.width, self.robot.height)):
                         final_state = successor
                         return final_state
                         break
