@@ -188,8 +188,8 @@ then
     then
       echo "AWS DeepRacer Navigation Stack repo"
       git clone https://github.com/aws-deepracer/aws-deepracer.git
-      # For some reason the topic they publish is /cmdvel_to_servo_node/servo_msg, it needs to be /ctrl_pkg/servo_msg
       # Replace  constants.ACTION_PUBLISH_TOPIC  with  'ctrl_pkg/servo_msg'
+      sed -i "s/constants.ACTION_PUBLISH_TOPIC/'\/ctrl_pkg\/servo_msg'/" aws-deepracer/deepracer_nodes/cmdvel_to_servo_pkg/cmdvel_to_servo_pkg/cmdvel_to_servo_node.py
     fi
     echo "Building cmdvel_to_servo_pkg package"
     cd $AWS_DEEPRACER_NAV && colcon build --packages-select cmdvel_to_servo_pkg
