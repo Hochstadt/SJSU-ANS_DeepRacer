@@ -56,6 +56,12 @@ cd $CUR_PATH
 #Additional car & host dependencies
 LASER_GEOM_PATH="$DEP_PATH/laser_geometry"
 COMMON_INF_PATH="$DEP_PATH/common_interfaces"
+ROS_NUMPY="$DEP_PATH/ros2_numpy"
+
+
+
+
+
 cd $DEP_PATH
 # laser_geom
 ####################################################################
@@ -92,6 +98,26 @@ else
 fi
 source $COMMON_INF_PATH/install/setup.bash
 
+
+cd $DEP_PATH
+# ros2numpy
+########################################################################3
+#Check if built
+if [ ! -d "$ROS_NUMPY/build" ]
+then
+  if [ ! -d $ROS_NUMPY ]
+  then
+    echo "Cloning common interfaces"
+    git clone -b foxy-devel git@github.com:taylormaurer4323/ros2_numpy.git
+  fi
+  echo "Building ros2 numpy"
+  cd $ROS_NUMPY && colcon build
+else
+  echo "Common interfaces packages already exists and is built"
+fi
+source $ROS_NUMPY/install/setup.bash
+
+
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
 #######################################################
@@ -110,7 +136,6 @@ then
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
-  ROS_NUMPY="$DEP_PATH/ros2_numpy"
 
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
@@ -120,6 +145,7 @@ then
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
   NAVIGATOR_CAR="$CUR_PATH/navigation_module/navigator_car"
   CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
+  
 
   cd $DEP_PATH
 
@@ -343,6 +369,7 @@ then
   ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
   ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
   NAVIGATOR_HOST="$CUR_PATH/navigation_module/navigator_host"
+  PATH_PLANNER="$CUR_PATH/navigation_module/path_planner"
 
   #Rviz interface
   cd $CUR_PATH
@@ -390,6 +417,21 @@ then
   fi
   source $ANS_SERVER/install/setup.bash
 
+
+  #path_planner
+  ##########################################33
+    
+  cd $CUR_PATH
+  if [ ! -d "$PATH_PLANNER/build" ]
+  then
+    echo "building path planner"
+    cd $PATH_PLANNER && colcon build
+  else
+    echo "path planner host already built"
+  fi
+  source $PATH_PLANNER/install/setup.bash
+
+
   #navigator_host
   ##########################################33
     
@@ -404,6 +446,8 @@ then
   source $NAVIGATOR_HOST/install/setup.bash
 
   
+  
+
 else
   echo "'$1' is not an understood argument, try one of the following"
   echo "source setup/sourceme.sh car"

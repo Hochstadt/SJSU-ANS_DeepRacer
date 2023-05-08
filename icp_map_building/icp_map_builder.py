@@ -16,6 +16,8 @@ import numpy as np
 import datetime
 import icp
 import math
+from scipy.spatial.transform import Rotation as R
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
 
 
 
@@ -27,6 +29,7 @@ if __name__ == '__main__':
 
         #Variables
         data_dir = sys.argv[1]
+        #data_dir = 'data/slowis_steady'
         MAP_FILE_NAME = 'map_file.pickle'
         OCCUPANCY_PNG = 'occupancy.png'
         OCCUPANCY_YAML = 'occupancy.yaml'
@@ -36,7 +39,7 @@ if __name__ == '__main__':
         start_index = 0
         INFO_EVERY = 10
         DISPLAY_EVERY = 50
-        STOP_AFTER = 505
+        STOP_AFTER = 15000
         #the value to help with outlier rejection
         DVALUE = .1
         #will not add points if outside this 
@@ -47,7 +50,7 @@ if __name__ == '__main__':
         TRIM_CONSISTENCY = 25
         #Flags
         bDisplay = True
-        bDebug = True
+        bDebug = False
         bOutlierRej = False
 
         ##Data collection
@@ -182,6 +185,11 @@ if __name__ == '__main__':
 
             c+=1
 
+
+
+
+
+
         if bDisplay:
             plt.scatter(full_pc_map[:,0], full_pc_map[:,1], color='blue')
             plt.xlabel('X')
@@ -191,12 +199,18 @@ if __name__ == '__main__':
             fname = os.path.join(data_dir, fname)
             plt.savefig(fname)
             plt.show()
-        #Save the finalized map as pickle file
-        
-        fname = os.path.join(data_dir, MAP_FILE_NAME)
-        with open(fname, 'wb') as handle:
-            pickle.dump(full_pc_map, handle)
 
+        # NStart generating the occ map
+        # Specify size and resolution of map
+        gridSizeMeters = 16
+        res = .05
+
+
+        # Calculate grid size and center location
+        gridSize = gridSizeMeters/res
+        center = np.array([(gridSize-1)/2, (gridSize-1)/2])
+
+        #Save the finalized map as pickle file
         pts = []
         for i in range(full_pc_map.shape[0]):
             x = full_pc_map[i, 0]
@@ -206,24 +220,24 @@ if __name__ == '__main__':
             pts.append(pt3D)
 
         pts = np.array(pts)
-        # Now lets see about generating an occupancy map image thingy
-        # Specify size and resolution of map
-        gridSizeMeters = 16
-        res = .05
-
-        # Calculate grid size and center location
-        gridSize = gridSizeMeters/res
-        center = np.array([(gridSize-1)/2, (gridSize-1)/2])
+        r = R.from_euler('z', -np.pi/2)
+        rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) + (res * np.array([[center[0], center[1], 0]]).transpose())
+        rotated_pts = rotated_pts.transpose()
+        fname = os.path.join(data_dir, MAP_FILE_NAME)
+        with open(fname, 'wb') as handle:
+            pickle.dump(rotated_pts, handle)
 
         # Initialize Occupancy Map
         occGrid = np.zeros((int(gridSize),int(gridSize),3), dtype=np.uint8)
         #According to Curtis need to flip
-        occGrid = np.rot90(occGrid, -1, (0,1))
+        occGrid = np.rot90(occGrid, k=-1, axes=(0,1))
+
         # Loop through each point in point cloud
         num_pts = pts.shape
         for i in range(0, num_pts[0]):
             # Set location in Occupancy Map to occupied
             location = pts[i,:2]/res + center
+            #location = pts[i,:2]/res
             occGrid[int(location[0]),int(location[1])] = [255,255,255]
 
         import yaml

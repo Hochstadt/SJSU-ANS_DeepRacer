@@ -14,8 +14,7 @@ from nav_msgs.msg import Path
 
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
-
-
+from nav_msgs.msg import OccupancyGrid
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 
@@ -36,7 +35,7 @@ class navigatorHost(Node):
         self.bMapLoaded = False
         map_file = 'na'
         occ_file = 'na'
-        #goal_state = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
         #Expecting this to be the full path to the map file. If na will search
         #the current directory for one
         self.declare_parameter('map_file', map_file)
@@ -55,11 +54,6 @@ class navigatorHost(Node):
                                                    10)
         self.map_timer = self.create_timer(1, self.publishMap)
 
-        self.goal_publisher = self.create_publisher(PoseStamped, 
-                                                   '/ans_services/goal_state_msg', 
-                                                   10)
-
-
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
                 history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
@@ -70,7 +64,6 @@ class navigatorHost(Node):
                                                         '/localization/pose',
                                                         self.pose_listener, 
                                                         qos_profile=qos_profile)
-        
 
         self.solution_found_subscriber = self.create_subscription(Bool,
                                                         '/localization/solution_found',
@@ -82,12 +75,11 @@ class navigatorHost(Node):
                                                         '/localization/aligned_lidar_pt_msg',
                                                         self.pt_cloud_listener, 
                                                         qos_profile=qos_profile)
-        #The client to start autonomous navigation, with the generation of the path...
-        self.bPathSent = False
-        self.path_publisher = self.create_publisher(Path, 
-                                                   '/navigator_car/global_path', 
-                                                   10)
+
         self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
+        
+    def path_listener(self, msg):
+        self.get_logger().info('Received the path')
 
     def publishMap(self):
         #Check if this map file exists 
@@ -143,7 +135,6 @@ class navigatorHost(Node):
         self.point = msg.pose.position
         self.quat = msg.pose.orientation
 
-
     def pt_cloud_listener(self, msg):
         point_list = point_cloud2.read_points_list(msg)
         pl_length = len(point_list)
@@ -156,7 +147,6 @@ class navigatorHost(Node):
 
     def solution_found_listener(self, msg):
         bSolutionFound = msg.data
-        print(bSolutionFound)
         if bSolutionFound == True:
             self.get_logger().info('Localization Successful')
             self.get_logger().info('Position: <%.4f %.4f %.4f>' % (self.point.x, self.point.y, self.point.z))
@@ -166,28 +156,6 @@ class navigatorHost(Node):
             with open('debug_map.pickle', 'wb') as handle:
                 pickle.dump(self.debug_point_array, handle)
 
-            #if self.bPathSent == False:
-            ############################################################################
-            #Path planning section here:
-            #############################################################################
-            #For now creating my own path though
-            if self.bPathSent == False:
-                pos = np.array([[self.point.x, self.point.y]]).transpose()
-                orientation = self.quat_to_theta(self.quat)
-                self.path, self.goal_state = self.get_hand_path(pos, orientation)
-                self.get_logger().info('Path Identified')
-                self.bPathSent = True
-                #But would take the self.debug_point_array, and the self.point and self.quaternion to figure
-                #out the path....
-
-            #Now need to call the navigator_car service, with the map to essentially start navigating
-            #Send asynchronous call:
-            self.get_logger().info('now publishing path w/goal')
-            self.path_publisher.publish(self.path)
-            self.goal_publisher.publish(self.goal_state)
-            
-   
-                
     def get_quaternion_from_euler(self, roll, pitch, yaw):
         """
         Convert an Euler angle to a quaternion.

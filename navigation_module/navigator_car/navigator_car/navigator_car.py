@@ -34,7 +34,7 @@ class navigatorCar(Node):
 
 
         self.path_subscriber = self.create_subscription(Path,
-                                                '/navigator_car/global_path',
+                                                '/controller/path_request',
                                                 self.path_listener,
                                                 10)
         self.solution_subscriber = self.create_subscription(Bool,
