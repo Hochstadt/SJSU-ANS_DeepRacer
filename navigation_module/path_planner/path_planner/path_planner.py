@@ -55,7 +55,7 @@ class Path_Planner(Node):
             depth=1)
 
         # Create Map Load message subscriber
-        self.mCurrentPose = self.create_subscription(
+        self.mGoalPose = self.create_subscription(
             PoseStamped,
             "/goal_pose",
             self.store_goal_state,
@@ -69,7 +69,7 @@ class Path_Planner(Node):
             qos_profile=qos_profile)             
             
         # Create Map Load message subscriber
-        self.mCurrentPose = self.create_subscription(
+        self.mOccMap= self.create_subscription(
             OccupancyGrid,
             "/ans_services/occupancy_map_msg",
             self.store_map,
