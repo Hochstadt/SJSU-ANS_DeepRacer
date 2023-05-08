@@ -47,7 +47,7 @@ class PIDControl : public rclcpp::Node
 	    z_rot=0;
 
 	    //TODO make target variable
-	    target=0;
+	    target=40;
 	    integ=0;
 	    old_error=0;
 	    throt=.1;
@@ -72,6 +72,7 @@ class PIDControl : public rclcpp::Node
 private:
         void acceptPose(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 	{
+		RCLCPP_INFO(this->get_logger(),"pose recv");
 		if(pose_recv)
 		{
 			double delta_x=last_pose.pose.position.x-msg->pose.position.x;
