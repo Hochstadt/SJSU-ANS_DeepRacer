@@ -18,7 +18,7 @@ else
   cd ${DATA_PATH}
   #Attempt scp from deepracer
   echo "SCP-ing: deepracer@${DEEPRACER_IP}:${MEDIA_LOCATION}"
-  #scp -r deepracer@${DEEPRACER_IP}:${MEDIA_LOCATION} .
+  scp -r deepracer@${DEEPRACER_IP}:${MEDIA_LOCATION} .
   
   #Now go and run python script to convert pc2 to numpy arrays for map building
   #Extract folder name
