@@ -171,18 +171,21 @@ class navigatorHost(Node):
             #Path planning section here:
             #############################################################################
             #For now creating my own path though
-            pos = np.array([[self.point.x, self.point.y]]).transpose()
-            orientation = self.quat_to_theta(self.quat)
-            path, goal_state = self.get_hand_path(pos, orientation)
-            #But would take the self.debug_point_array, and the self.point and self.quaternion to figure
-            #out the path....
+            if self.bPathSent == False:
+                pos = np.array([[self.point.x, self.point.y]]).transpose()
+                orientation = self.quat_to_theta(self.quat)
+                self.path, self.goal_state = self.get_hand_path(pos, orientation)
+                self.get_logger().info('Path Identified')
+                self.bPathSent = True
+                #But would take the self.debug_point_array, and the self.point and self.quaternion to figure
+                #out the path....
 
             #Now need to call the navigator_car service, with the map to essentially start navigating
             #Send asynchronous call:
-            self.get_logger().info('Path identified, now publishing w/goal')
-            self.path_publisher.publish(path)
-            self.goal_publisher.publish(goal_state)
-            self.bPathSent = True
+            self.get_logger().info('now publishing path w/goal')
+            self.path_publisher.publish(self.path)
+            self.goal_publisher.publish(self.goal_state)
+            
    
                 
     def get_quaternion_from_euler(self, roll, pitch, yaw):
@@ -211,11 +214,17 @@ class navigatorHost(Node):
     
     def get_hand_path(self, starting_pos, orientation):
 
-        goal = np.array([[5, 0]]).transpose()
-        hand_path = np.array([[4.5, -2.5], [5, -2], [5, -1]]).transpose()
+        goal = np.array([[3.75, 0.2]]).transpose()
+        #hand_path = np.array([[4.5, -2.5], [5, -2], [5, -1]]).transpose()
+        hand_path = np.array([[4.5, -2.5],[5, -1.5], [5,0], [4.25, 0.2]]).transpose()
         hand_path = np.hstack((starting_pos, hand_path))
         hand_path = np.hstack((hand_path, goal))
-        sample_num = 5
+        sample_num = 2
+        total_pts= hand_path
+
+
+
+        '''
         total_pts = np.array([])
         for i in range(0, hand_path.shape[1]-1):
             st_x = hand_path[0, i]
@@ -239,18 +248,24 @@ class navigatorHost(Node):
                 #rots = np.linspace(orientation, rotangle, num=sample_num)
                 total_pts = np.array([pts_x[0:-1], pts_y[0:-1]])
                 #total_rots = rots
-
+        '''
         #Run through and define the tangent for each path starting with the next index
         total_rots = [orientation]
         for i in range(1, total_pts.shape[1] - 1):
-            pt_x1 = total_pts[0, i]
-            pt_y1 = total_pts[1, i]
-            pt_x2 = total_pts[0, i+1]
-            pt_y2 = total_pts[1, i+1]
+            pt_x1 = total_pts[0, i-1]
+            pt_y1 = total_pts[1, i-1]
+            pt_x2 = total_pts[0, i]
+            pt_y2 = total_pts[1, i]
 
             dx = pt_x2 - pt_x1
             dy = pt_y2 - pt_y1
-            total_rots.append(np.arctan(dy/dx))
+            self.get_logger().info('pt_x2: %.4f, pt_x1 %.4f, dx %.4f' % (pt_x2, pt_x1, dx))
+            self.get_logger().info('pt_y2: %.4f, pt_y1 %.4f, dy %.4f' % (pt_y2, pt_y1, dy))
+            angle = np.arctan(dy/dx)
+            if angle < 0:
+                angle += np.pi
+            total_rots.append(angle)
+            self.get_logger().info('Rotation = %.4f' % np.rad2deg(angle))
         #Hopefully this is tangenet enough to do this
         total_rots.append(total_rots[-1])
         total_rots = np.array(total_rots)
