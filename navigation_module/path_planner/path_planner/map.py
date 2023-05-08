@@ -1,4 +1,13 @@
-from nav_msgs.msg import OccupancyGrid
+######################################################
+# Based on code from the following git repo:         #
+# https://github.com/LetsPlayNow/TrajectoryPlanner   #
+#                                                    #
+# Functionality is larger the same but with          #
+# improvements and refactor to works as ROS2 node    #
+# for Foxy and Humble                                #
+###################################################### 
+
+rom nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point
 from scipy.spatial.transform import Rotation as R
 import math

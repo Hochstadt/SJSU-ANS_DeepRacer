@@ -1,3 +1,12 @@
+######################################################
+# Based on code from the following git repo:         #
+# https://github.com/LetsPlayNow/TrajectoryPlanner   #
+#                                                    #
+# Functionality is larger the same but with          #
+# improvements and refactor to works as ROS2 node    #
+# for Foxy and Humble                                #
+###################################################### 
+
 #ROS
 import rclpy
 from rclpy.node import Node
