@@ -1,5 +1,5 @@
 #%%
-#import open3d as o3d
+import open3d as o3d
 import pyransac3d as pyrsc
 import pickle
 import sys
@@ -31,6 +31,7 @@ if __name__ == '__main__':
         data_dir = sys.argv[1]
         #data_dir = 'data/slowis_steady'
         MAP_FILE_NAME = 'map_file.pickle'
+        MAP_PCD_NAME = 'map_file.pcd'
         OCCUPANCY_PNG = 'occupancy.png'
         OCCUPANCY_YAML = 'occupancy.yaml'
         YEAR = 2022
@@ -220,6 +221,14 @@ if __name__ == '__main__':
             pts.append(pt3D)
 
         pts = np.array(pts)
+
+        #Add pts into the pcd file and save, then we can do some other stuff too
+        sample_pcd_data = o3d.data.PCDPointCloud()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pts)
+        o3d.io.write_point_cloud(os.path.join(data_dir,MAP_PCD_NAME), pcd)
+
+
         r = R.from_euler('z', -np.pi/2)
         rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) + (res * np.array([[center[0], center[1], 0]]).transpose())
         rotated_pts = rotated_pts.transpose()
