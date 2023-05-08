@@ -217,7 +217,8 @@ if __name__ == '__main__':
 
         # Initialize Occupancy Map
         occGrid = np.zeros((int(gridSize),int(gridSize),3), dtype=np.uint8)
-
+        #According to Curtis need to flip
+        occGrid = np.rot90(occGrid, -1, (0,1))
         # Loop through each point in point cloud
         num_pts = pts.shape
         for i in range(0, num_pts[0]):
@@ -236,7 +237,7 @@ if __name__ == '__main__':
         occupancy_grid['free_thresh'] = 0.0
         imgname = OCCUPANCY_PNG
         occupancy_grid['image'] = imgname
-        occupancy_grid['mode'] = "trinary"
+        occupancy_grid['mode'] = "scale"
 
         # Write Occupancy Map YAML
         with open(os.path.join(data_dir, OCCUPANCY_YAML), 'w') as fp:
