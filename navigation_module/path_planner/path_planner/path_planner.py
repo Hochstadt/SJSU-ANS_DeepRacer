@@ -27,12 +27,9 @@ from path_planner.state import State
 
 class Path_Planner(Node):
 
-    foward_motion   = [0.3, 0.0]
-    backward_motion = [0.0, 0.0]
-    left_motion     = [0.3, 1.5708/3]
-    right_motion    = [0.3, -1.5708/3]
-    robot_height    = 0.31
-    robot_width     = 0.31
+    motions   = [0.3, 0.0, 0.3, 1.5708/3, 0.3, -1.5708/3]
+    robot_height    = 0.3048
+    robot_width     = 0.127
 
     def __init__(self):
         super().__init__('path_planner')
@@ -95,26 +92,19 @@ class Path_Planner(Node):
     def load_config(self):
 
         # Declare input variables
-        self.declare_parameter("foward_motion",  self.foward_motion)
-        self.declare_parameter("backward_motion",  self.backward_motion)
-        self.declare_parameter("left_motion",  self.left_motion)
-        self.declare_parameter("right_motion",  self.right_motion)
+        self.declare_parameter("motions",  self.motions)
         self.declare_parameter("robot_height",  self.robot_height)
         self.declare_parameter("robot_width",  self.robot_width)
 
         # Set input variables
-        self.foward_motion = self.get_parameter("foward_motion").get_parameter_value().double_array_value
-        self.backward_motion = self.get_parameter("backward_motion").get_parameter_value().double_array_value
-        self.left_motion = self.get_parameter("left_motion").get_parameter_value().double_array_value
-        self.right_motion = self.get_parameter("right_motion").get_parameter_value().double_array_value
+        self.motions = self.get_parameter("motions").get_parameter_value().double_array_value
         self.robot_height = self.get_parameter("robot_height").get_parameter_value().double_value
         self.robot_width = self.get_parameter("robot_width").get_parameter_value().double_value
 
         # Construct Moves object
-        self.moves = [Move(self.foward_motion[0], self.foward_motion[1]),  # forward
-                      Move(self.backward_motion[0], self.backward_motion[1]),  # backward
-                      Move(self.left_motion[0], self.left_motion[1]),  # left
-                      Move(self.right_motion[0], self.right_motion[1])]  # right
+        self.moves = []
+        for i in range(0, int(len(self.motions)/2)):
+            self.moves.append(Move(self.motions[2*i], self.motions[2*i+1]))
         
         # Construct Robot object
         self.robot = Robot(self.robot_height, self.robot_width)

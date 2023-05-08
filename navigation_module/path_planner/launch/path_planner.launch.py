@@ -8,10 +8,7 @@ def generate_launch_description():
         	executable='path_planner',
         	output='screen',
             parameters=[
-                {'foward_motion': [0.15, 0.0],
-                 'backward_motion': [0.0, 0.0],
-                 'left_motion': [0.15, 1.5708/5],
-                 'right_motion': [0.15, -1.5708/5],
+                {'motions': [0.5, 0.0, 0.5, 1.5708/2, 0.5, -1.5708/2],
                  'robot_height': 0.3048,
                  'robot_width': 0.127
                  }
