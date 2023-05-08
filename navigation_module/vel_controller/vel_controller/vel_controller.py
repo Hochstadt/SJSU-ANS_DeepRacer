@@ -117,7 +117,7 @@ class velController(Node):
             #force accept cmd
             self.prev_increment = 1000
             self.mThrottle = 0
-            vP = .7
+            vP = .5
             vI = 0.0008
             vD = 0.000 
             self.vel_pid = PID(vP, vI, vD)
@@ -129,9 +129,9 @@ class velController(Node):
             #self.tracked_vel = 0
 
             #angvelPID
-            avP = 1.3
-            avI = 0.01
-            avD = 0.001
+            avP = 2.0
+            avI = 0.005
+            avD = 0.000
             self.angvel_pid = PID(avP, avI, avD)
             self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
             self.mSteering = 0
@@ -160,10 +160,10 @@ class velController(Node):
                 meas_theta_world = eangles[0]
                 pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
                 #identify instantaneous velocity...
-                self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
-                                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
-                                        pt_car[0] - self.prev_pt_car[0],
-                                        pt_car[1] - self.prev_pt_car[1]))
+                #self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
+                #                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
+                #                        pt_car[0] - self.prev_pt_car[0],
+                #                        pt_car[1] - self.prev_pt_car[1]))
                 #self.get_logger().info('Delta Time: %.4f' % dtime)
                 #Seems like the frames are off, so just adding this absolute term so velocity is always positive
                 meas_vel_x_car = abs(pt_car[0] - self.prev_pt_car[0])/dtime
@@ -173,14 +173,16 @@ class velController(Node):
                     self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
                         (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
                     
-                    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
-                    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
+                #    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
+                #    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
                     #bad command just decrease throttle in case moving too fast, to get to a place where we understand velocity again
                     tmpmThrottle = -.1
+                    #This concept doesn't apply for steering as 0 is cruise, whereas throttle set speed is cruise
+                    #tmpmSteering = 0
                 else:
                     if self.bCmdReceived == True:
-                        self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
-                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
+                #        self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
+                #        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
 
                         #Update the PID
                         vel_err = self.vel_pid.update(float(meas_vel_x_car))
@@ -191,25 +193,27 @@ class velController(Node):
                         tmpmThrottle = self.vel_pid.output
                         self.prev_increment = tmpmThrottle
                         self.prev_vel = meas_vel_x_car
-                        mSteering = self.angvel_pid.output
+                        self.mSteering = self.angvel_pid.output
+
                 if self.bCmdReceived == True:
                     if tmpmThrottle is not None:
+                        self.get_logger().info('Controller output, throttle inc %.4f, rotation %.4f' % (tmpmThrottle, self.mSteering))
                         self.mThrottle+=tmpmThrottle 
                         servoMsg = ServoCtrlMsg()
                         if self.mThrottle > 1.0:
                             self.mThrottle = 1.0
-                        elif self.mThrottle < -1.0:
+                        elif self.mThrottle < 0.0:
                             #Assuming no backwards!
-                            self.mThrottle = 0
+                            self.mThrottle = float(0.0)
                         
-                        if mSteering > 1.0:
-                            mSteering = 1.0
-                        elif mSteering < -1.0:
-                            mSteering = -1.0
-                        mSteering = mSteering * 1.0
+                        if self.mSteering > 1.0:
+                            self.mSteering = 1.0
+                        elif self.mSteering < -1.0:
+                            self.mSteering = -1.0
+                        self.mSteering = self.mSteering * 1.0
                         servoMsg.throttle = self.mThrottle
-                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (self.mThrottle, mSteering))
-                        servoMsg.angle = mSteering
+                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (self.mThrottle, self.mSteering))
+                        servoMsg.angle = self.mSteering
                         self.throttle_pub.publish(servoMsg)
                 else:
                     self.get_logger().info('mThrottle is none')

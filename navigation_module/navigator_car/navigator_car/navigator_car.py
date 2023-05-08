@@ -1,10 +1,18 @@
 #ROS
+'''
+Notes:
+-Increase the gains for the turning OR do more basic logic of soft turn, strong turn, etc. 
+ but this seems like your calibration has to be pretty good
+-For waypoint checking though, should increase the accpet statement as it seems like 
+ we're missing because of rotation
+'''
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from nav_msgs.msg import Path
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Bool
 
 #Python
 import numpy as np
@@ -13,12 +21,13 @@ from datetime import datetime
 from scipy.spatial.transform import Rotation as R
 
 class navigatorCar(Node):
-    BOUND_CONSTANT = 3
+    BOUND_CONSTANT = 10
     def __init__(self):
         super().__init__('navigator_car')
         self.bReceivedPath = False
         self.bNoiseChar = False
         self.bFirstPath = True
+        self.bSolution = False
         self.noise_time = 2
         self.avg_vel = .3 
         self.path_index = 1
@@ -28,6 +37,10 @@ class navigatorCar(Node):
                                                 '/navigator_car/global_path',
                                                 self.path_listener,
                                                 10)
+        self.solution_subscriber = self.create_subscription(Bool,
+                                                '/localization/solution_found',
+                                                self.solution_listener,
+                                                1)
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
                 history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
@@ -50,7 +63,6 @@ class navigatorCar(Node):
                                                    qos_profile=qos_profile)
         timer_period = .5
         #self.timer = self.create_timer(timer_period, self.update_cmd)
-
         
     def pose_listener(self, msg):
         #Basically just save this so we always have an estimate of this state
@@ -61,28 +73,57 @@ class navigatorCar(Node):
             way_pos = self.next_pose.position
             cur_theta = self.quat_to_theta(self.current_state.orientation)
             way_theta = self.quat_to_theta(self.next_pose.orientation)
-
-            dx = abs(cur_pos.x - way_pos.x)
-            dy = abs(cur_pos.y - way_pos.y)
-            dtheta = abs(cur_theta - way_theta)
-            if dx < self.x_limit and dy < self.y_limit and dtheta < self.theta_limit:
-                self.get_logger().info('Achieved Waypoint with the following stats')
+            qway  = self.next_pose.orientation
+            r = R.from_quat([qway.x, qway.y, qway.z, qway.w])
+        
+            #dx = (cur_pos.x - way_pos.x)
+            dx = (way_pos.x - cur_pos.x)
+            #dy = (cur_pos.y - way_pos.y)
+            dy = (way_pos.y - cur_pos.y)
+            vect_car = np.matmul(r.as_matrix(), np.array([dx, dy, 0]))
+            
+            x_unit = np.array([0,1 ,0])
+            waypoint_heading_angle = np.arccos(np.dot(vect_car, x_unit)/(np.linalg.norm(x_unit) * np.linalg.norm(vect_car)))
+            dtheta = (cur_theta - way_theta)
+            off_heading = waypoint_heading_angle - cur_theta
+            self.get_logger().info('Waypoint Heading = %.4f, difference is %.4f' % (np.rad2deg(waypoint_heading_angle), np.rad2deg(off_heading)))
+            #If you miss the rotation, hopefully it's not that bad.... but you can't really do a complete 180 in place or wahtever
+            if abs(dx) < self.x_limit and abs(dy) < self.y_limit:# and abs(dtheta) < self.theta_limit:
+                self.get_logger().info('HOOOOOOORAY!   Achieved Waypoint with the following stats')
                 
                 if self.path_index >= len(self.path.poses):
-                    self.get_logger().error('Error - out of poses in the path, are you sure you are not at the end?')
+                    self.avg_vel = 0.0
+                    self.get_logger().info('out of poses in the path, are at the end?')
+                    
+                else:
+                    self.next_pose = self.path.poses[self.path_index].pose
+                    self.path_index+=1
+            elif np.rad2deg(waypoint_heading_angle) > 90:
+                #This is the indicator we missed it... so move on and forget
+                self.get_logger().info('BOOOOOO Waypoing missed')
+                if self.path_index >= len(self.path.poses):
+                    self.avg_vel = 0.0
+                    self.get_logger().info('Out of poses, sort of at the end')
                 else:
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.path_index+=1
         
-            #self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
-            #                        % (cur_pos.x, cur_pos.y, np.rad2deg(cur_theta),
-            #                            way_pos.x, way_pos.y, np.rad2deg(way_theta)))
-            #self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
-            #                        (dx, dy, np.rad2deg(dtheta)))
+            self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
+                                    % (cur_pos.x, cur_pos.y, np.rad2deg(cur_theta),
+                                        way_pos.x, way_pos.y, np.rad2deg(way_theta)))
+            self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
+                                    (dx, dy, np.rad2deg(dtheta)))
 
             #update the command            
-            cmd_theta = way_theta
-            cmd_vel =  self.avg_vel
+            if self.bSolution == True:
+                cmd_theta = way_theta
+                cmd_vel = self.avg_vel
+            else:
+                self.get_logger().info('No solution, velocity and rotation set to 0')
+                #if we lose track and are waiting
+                cmd_theta = 0.0
+                cmd_vel = 0.0
+
             cmd = Float32MultiArray()
             cmd.data.append(cmd_vel)
             cmd.data.append(cmd_theta)
@@ -108,8 +149,8 @@ class navigatorCar(Node):
         
         
         if self.bNoiseChar == False:
-            self.get_logger().info('Sleeping for 2 seconds before ingesting path')
-            sleep(2.0)        
+            #self.get_logger().info('Sleeping for 4 seconds before ingesting path')
+            #sleep(4.0)        
             start_pose = self.path.poses[0].pose
             #Try to understand the deviations from the current state (as ideally
             # they should be near identical. Can characterize the noise this way)
@@ -119,8 +160,8 @@ class navigatorCar(Node):
             theta_start = self.quat_to_theta(qstart)
             qnow = start_pose.orientation            
             theta_now = self.quat_to_theta(qnow)
-            self.get_logger().info('Theta Now %.4f' % theta_now)
-            self.get_logger().info('Theta Start Path %.4f' % theta_now)
+            #self.get_logger().info('Theta Now %.4f' % theta_now)
+            #self.get_logger().info('Theta Start Path %.4f' % theta_now)
 
             self.get_logger().info('Current State Pos %.4f, vs. path start %.4f' % (self.current_state.position.x, start_pose.position.x))
             dtheta = theta_now - theta_start
@@ -131,7 +172,13 @@ class navigatorCar(Node):
             self.y_limit = self.BOUND_CONSTANT * abs(dy)
             self.start_pose = start_pose
             self.get_logger().info('Path length identified as %d, indexing at %d' % (len(self.path.poses),self.path_index))
-            self.get_logger().info('Bounds as 3 * <%.4f, %.4f> %.4f deg' % (self.x_limit, self.y_limit, np.rad2deg(self.theta_limit)))
+
+
+            #Hand-tuned noise values
+            self.theta_limit = np.deg2rad(25)
+            self.x_limit = .2
+            self.y_limit = .2
+            self.get_logger().info('Bounds as <%.4f, %.4f> %.4f deg' % (self.x_limit, self.y_limit, np.rad2deg(self.theta_limit)))
             self.next_pose = self.path.poses[self.path_index].pose
             
             #self.projected_time = dx/self.avg_vel
@@ -141,6 +188,8 @@ class navigatorCar(Node):
         
         #deduce the next waypoint as ideally the next one in the chain...        
         self.bReceivedPath = True
+    def solution_listener(self, msg):
+        self.bSolution = msg.data
 
     def quat_to_theta(self, q):
         r = R.from_quat([q.x, q.y, q.z, q.w])
