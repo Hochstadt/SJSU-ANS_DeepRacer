@@ -36,6 +36,26 @@ class velController(Node):
         bIMU = False
         self.declare_parameter('bIMU', bIMU)
         self.bIMU = self.get_parameter('bIMU').get_parameter_value().bool_value
+        #Helpful parameters!
+        velKp = 0
+        velKi = 0
+        velKd = 0
+        rotKp = 0
+        rotKi = 0
+        rotKd = 0
+        self.declare_parameter('velKp', velKp)
+        self.declare_parameter('velKi', velKi)
+        self.declare_parameter('velKd', velKd)
+        self.declare_parameter('rotKp', rotKp)
+        self.declare_parameter('rotKi', rotKi)
+        self.declare_parameter('rotKd', rotKd)
+        #Get parameters
+        velKp = self.get_paramter('velKp').get_paramter_value().double_value
+        velKi = self.get_paramter('velKi').get_paramter_value().double_value
+        velKd = self.get_paramter('velKd').get_paramter_value().double_value
+        rotKp = self.get_paramter('rotKp').get_paramter_value().double_value
+        rotKi = self.get_paramter('rotKi').get_paramter_value().double_value
+        rotKd = self.get_paramter('rotKd').get_paramter_value().double_value
 
 
         qos_profile = QoSProfile(
@@ -120,7 +140,7 @@ class velController(Node):
             vP = .5
             vI = 0.0008
             vD = 0.000 
-            self.vel_pid = PID(vP, vI, vD)
+            self.vel_pid = PID(velKp, velKi, velKd)
             self.vel_pid.setSampleTime(self.SAMPLE_TIME)
             #seems to increase with velocity command rate
             # 2 - 1 second commandnig/update
@@ -132,7 +152,7 @@ class velController(Node):
             avP = 2.0
             avI = 0.005
             avD = 0.000
-            self.angvel_pid = PID(avP, avI, avD)
+            self.angvel_pid = PID(rotKp, rotKi, rotKd)
             self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
             self.mSteering = 0
         

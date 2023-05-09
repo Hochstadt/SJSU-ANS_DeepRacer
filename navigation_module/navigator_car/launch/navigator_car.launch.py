@@ -64,11 +64,15 @@ def generate_launch_description():
     vel_controller = Node(
         package='vel_controller',
         executable='vel_controller',
-        parameters=[
-            {
-                'bIMU': bIMU
-            }
-            ]
+        parameters=[{
+                'bIMU': bIMU,
+                'velKp': 0.5,
+                'velKi': 0.0008,
+                'velKd': 0.0,
+                'rotKp': 2.0,
+                'rotKi': 0.005,
+                'rotKd': 0.0
+            }]            
         )
     servo_pkg = Node(
         package='servo_pkg',
