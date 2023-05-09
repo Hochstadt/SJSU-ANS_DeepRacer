@@ -187,10 +187,6 @@ if __name__ == '__main__':
             c+=1
 
 
-
-
-
-
         if bDisplay:
             plt.scatter(full_pc_map[:,0], full_pc_map[:,1], color='blue')
             plt.xlabel('X')
@@ -203,13 +199,18 @@ if __name__ == '__main__':
 
         # NStart generating the occ map
         # Specify size and resolution of map
-        gridSizeMeters = 16
-        res = .05
+        min_d = np.min([np.min(full_pc_map[:,0]), np.min(full_pc_map[:,1])])
+        max_d = np.max([np.max(full_pc_map[:,0]), np.max(full_pc_map[:,1])])
+
+        gridSizeMeters = np.ceil(max_d - min_d)
+        res = .1
 
 
         # Calculate grid size and center location
         gridSize = gridSizeMeters/res
         center = np.array([(gridSize-1)/2, (gridSize-1)/2])
+        center = np.array([4/res,-1/res])
+        center = np.array([np.abs(np.min(full_pc_map[:,0]))/res, np.abs(np.min(full_pc_map[:,1]))/res])
 
         #Save the finalized map as pickle file
         pts = []
@@ -222,13 +223,6 @@ if __name__ == '__main__':
 
         pts = np.array(pts)
 
-        #Add pts into the pcd file and save, then we can do some other stuff too
-        sample_pcd_data = o3d.data.PCDPointCloud()
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(pts)
-        o3d.io.write_point_cloud(os.path.join(data_dir,MAP_PCD_NAME), pcd)
-
-
         r = R.from_euler('z', -np.pi/2)
         rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) + (res * np.array([[center[0], center[1], 0]]).transpose())
         rotated_pts = rotated_pts.transpose()
@@ -236,8 +230,15 @@ if __name__ == '__main__':
         with open(fname, 'wb') as handle:
             pickle.dump(rotated_pts, handle)
 
+
+        #Add pts into the pcd file and save, then we can do some other stuff too
+        sample_pcd_data = o3d.data.PCDPointCloud()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(rotated_pts)
+        o3d.io.write_point_cloud(os.path.join(data_dir,MAP_PCD_NAME), pcd)
+
         # Initialize Occupancy Map
-        occGrid = np.zeros((int(gridSize),int(gridSize),3), dtype=np.uint8)
+        occGrid = 255 * np.ones((int(gridSize),int(gridSize),3), dtype=np.uint8)
         #According to Curtis need to flip
         occGrid = np.rot90(occGrid, k=-1, axes=(0,1))
 
@@ -247,8 +248,11 @@ if __name__ == '__main__':
             # Set location in Occupancy Map to occupied
             location = pts[i,:2]/res + center
             #location = pts[i,:2]/res
-            occGrid[int(location[0]),int(location[1])] = [255,255,255]
+            occGrid[int(location[0]),int(location[1])] = [0,0,0]
 
+
+        plt.imshow(occGrid)
+        plt.show()
         import yaml
         from PIL import Image
         # Create Occupancy Map YAML Strucutre

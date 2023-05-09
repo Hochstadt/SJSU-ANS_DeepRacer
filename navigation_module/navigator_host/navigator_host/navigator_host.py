@@ -38,7 +38,7 @@ class navigatorHost(Node):
 
         #Expecting this to be the full path to the map file. If na will search
         #the current directory for one
-        self.declare_parameter('map_file', map_file)
+        #self.declare_parameter('map_file', map_file)
         #Only add this if needed....
         #self.declare_parameter('occ_file', occ_file)
 
@@ -48,11 +48,6 @@ class navigatorHost(Node):
         #reports the pose
         self.point = -1
         self.quat = -1
-
-        self.map_publisher = self.create_publisher(PointCloud2, 
-                                                   '/ans_services/map_pt_msg', 
-                                                   10)
-        self.map_timer = self.create_timer(1, self.publishMap)
 
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -76,60 +71,10 @@ class navigatorHost(Node):
                                                         self.pt_cloud_listener, 
                                                         qos_profile=qos_profile)
 
-        self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
+        #self.map_file = self.get_parameter('map_file').get_parameter_value().string_value
         
     def path_listener(self, msg):
         self.get_logger().info('Received the path')
-
-    def publishMap(self):
-        #Check if this map file exists 
-        if self.bMapLoaded == False:       
-            if os.path.exists(self.map_file) == False:
-                #If not do a searcho f the current directory and take the file
-                #with map in the name
-                cur_dir = os.curdir
-                files = os.listdir(cur_dir)
-                for f in files:
-                    if 'map' in f and 'pickle' in f:
-                        self.get_logger().info('Found map file "%s"' % f)
-                        self.map_file = os.path.join(cur_dir, f)
-                        break
-                self.get_logger().info('Loading file "%s"' % self.map_file)
-                if not ('.pickle' in self.map_file and 'map' in self.map_file):
-                    self.get_logger().error('Could not load file')
-                    
-            #Load the map file
-            with open(self.map_file, 'rb') as handle:
-                np_pointcloud = pickle.load(handle)
-            #Verify in row by column shape
-            if np_pointcloud.shape[0] > np_pointcloud.shape[1]:
-                np_pointcloud = np_pointcloud.transpose()
-            #Need to convert to a poitn cloud shape that's iterable, soa  list
-            #where each list element are the three values for the point
-            self.list_pointcloud = []
-            
-            for i in range(0, np_pointcloud.shape[1]):
-                x = np_pointcloud[0, i]
-                y = np_pointcloud[1, i]
-                if np_pointcloud.shape[0] > 2:
-                    z = np_pointcloud[2, i]
-                else:
-                    z = 0.0
-                self.list_pointcloud.append([x,y,z])
-            #Map loaded now
-            self.bMapLoaded = True
-        
-        #Now convert to pointcloud2 using utility
-        #Create blank header
-        my_header = Header()
-        my_header.stamp = self.get_clock().now().to_msg()
-        my_header.frame_id = 'odom'
-        pc = point_cloud2.create_cloud_xyz32(my_header, self.list_pointcloud)
-            
-        #Now attempt a publish
-        if self.bMapLoaded == True:
-            self.get_logger().info('Sending Point Cloud To Car')            
-            self.map_publisher.publish(pc)
 
     def pose_listener(self, msg):
         self.point = msg.pose.position

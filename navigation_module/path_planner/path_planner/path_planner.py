@@ -127,7 +127,8 @@ class Path_Planner(Node):
         self.occMap = Map(msg)
 
         # Set waitForPlan flag to true
-        self.waitForPlan = True
+        #Commenting this out since map is repeatedly being sent so don't want to continually re-plan
+        # self.waitForPlan = True
         self.mapReady   = True
 
     def store_goal_state(self, goalMsg):
