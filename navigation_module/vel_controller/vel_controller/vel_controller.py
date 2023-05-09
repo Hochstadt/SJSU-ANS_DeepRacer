@@ -50,12 +50,12 @@ class velController(Node):
         self.declare_parameter('rotKi', rotKi)
         self.declare_parameter('rotKd', rotKd)
         #Get parameters
-        velKp = self.get_paramter('velKp').get_paramter_value().double_value
-        velKi = self.get_paramter('velKi').get_paramter_value().double_value
-        velKd = self.get_paramter('velKd').get_paramter_value().double_value
-        rotKp = self.get_paramter('rotKp').get_paramter_value().double_value
-        rotKi = self.get_paramter('rotKi').get_paramter_value().double_value
-        rotKd = self.get_paramter('rotKd').get_paramter_value().double_value
+        velKp = self.get_parameter('velKp').get_parameter_value().double_value
+        velKi = self.get_parameter('velKi').get_parameter_value().double_value
+        velKd = self.get_parameter('velKd').get_parameter_value().double_value
+        rotKp = self.get_parameter('rotKp').get_parameter_value().double_value
+        rotKi = self.get_parameter('rotKi').get_parameter_value().double_value
+        rotKd = self.get_parameter('rotKd').get_parameter_value().double_value
 
 
         qos_profile = QoSProfile(
