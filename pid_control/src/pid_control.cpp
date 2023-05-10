@@ -26,8 +26,8 @@ class PIDControl : public rclcpp::Node
                 "/imu/data_raw", 10, std::bind(&PIDControl::acceptImu, this, _1));
 	    mPositionSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
 	        "/localization/pose", 10, std::bind(&PIDControl::acceptPose, this, _1));
-	    mRouteSubscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-                "/goal_pose", 10, std::bind(&PIDControl::acceptRoute, this, _1));
+	    mRouteSubscription = this->create_subscription<nav_msgs::msg::Path>(
+                "/path_planner/path", 10, std::bind(&PIDControl::acceptRoute, this, _1));
 	    auto ServoGPIOClient = this->create_client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>("/servo_pkg/servo_gpio");
             auto servo_gpio_request = std::make_shared<deepracer_interfaces_pkg::srv::ServoGPIOSrv::Request>();
 	    sleep(5);
@@ -97,43 +97,56 @@ private:
 			pose_recv=true;
 		}
 		last_pose=*msg;
-
-		if(Path!=nullptr)
+		bool repeat=true;
+		while(repeat)
 		{
-			target=.3;
-			double delta_x=Path->pose.position.x-msg->pose.position.x;
-                        double delta_y=Path->pose.position.y-msg->pose.position.y;
-			double distance=sqrt(delta_x*delta_x+delta_y*delta_y);
-			target_angle=atan2(delta_y,delta_x);
-			if(abs(target_angle-est_angle)>4)
+			repeat=false;
+			if(Path!=nullptr)
 			{
-				double new_ang=target_angle+M_PI+(M_PI-est_angle);
-				if(target_angle<0)
+				target=.3;
+				double delta_x=Path->poses[path_index].pose.position.x-msg->pose.position.x;
+                        	double delta_y=Path->poses[path_index].pose.position.y-msg->pose.position.y;
+				double distance=sqrt(delta_x*delta_x+delta_y*delta_y);
+				target_angle=atan2(delta_y,delta_x);
+				if(abs(target_angle-est_angle)>M_PI)
 				{
-					target_angle=new_ang;
+					double new_ang=target_angle+M_PI+(M_PI-est_angle);
+					if(target_angle<0)
+					{
+						target_angle=new_ang;
+					}
+					else
+					{
+						target_angle=-new_ang;
+					}
+					est_angle=0;
 				}
-				else
-				{
-					target_angle=-new_ang;
-				}
-				est_angle=0;
-			}
 
-			RCLCPP_INFO(this->get_logger(),"Target angle %f, current angle %f, distance %f",target_angle,est_angle,distance);
-			RCLCPP_INFO(this->get_logger(),"%f %f %f",roll,pitch,yaw);
-			if(distance<.2)
-			{
-				Path=nullptr;
-				target=0;
+				RCLCPP_INFO(this->get_logger(),"Target angle %f, current angle %f, distance %f",target_angle,est_angle,distance);
+				RCLCPP_INFO(this->get_logger(),"%f %f %f",roll,pitch,yaw);
+				if(distance<.2)
+				{
+					path_index++;
+					if(path_index>=Path->poses.size())
+					{
+						Path.reset();
+						target=0;
+					}
+					else
+					{
+						repeat=true;
+					}
+				}
 			}
 			
 		}
 	}
 
-	void acceptRoute(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+	void acceptRoute(const nav_msgs::msg::Path::SharedPtr msg)
         {
 		RCLCPP_INFO(this->get_logger(),"got route");
 		Path=msg;
+		path_index=0;
 	}
 
         void acceptImu(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -192,10 +205,10 @@ private:
 
 	rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr mIMUSubscription;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mPositionSubscription;
-	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mRouteSubscription;
+	rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr mRouteSubscription;
 	rclcpp::Publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>::SharedPtr mServoPub;
 
-	geometry_msgs::msg::PoseStamped::SharedPtr Path;
+	nav_msgs::msg::Path::SharedPtr Path;
 	unsigned int path_index;
 	double y_calib;
 	
