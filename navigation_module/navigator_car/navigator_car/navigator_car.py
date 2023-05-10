@@ -33,6 +33,7 @@ class navigatorCar(Node):
         self.path_index = 1
 
 
+
         self.path_subscriber = self.create_subscription(Path,
                                                 '/controller/path_request',
                                                 self.path_listener,

@@ -187,15 +187,7 @@ if __name__ == '__main__':
             c+=1
 
 
-        if bDisplay:
-            plt.scatter(full_pc_map[:,0], full_pc_map[:,1], color='blue')
-            plt.xlabel('X')
-            plt.ylabel('Y')
-            plt.axis('equal')
-            fname = 'final_map.png'
-            fname = os.path.join(data_dir, fname)
-            plt.savefig(fname)
-            plt.show()
+        
 
         # NStart generating the occ map
         # Specify size and resolution of map
@@ -208,9 +200,9 @@ if __name__ == '__main__':
 
         # Calculate grid size and center location
         gridSize = gridSizeMeters/res
-        center = np.array([(gridSize-1)/2, (gridSize-1)/2])
-        center = np.array([4/res,-1/res])
-        center = np.array([np.abs(np.min(full_pc_map[:,0]))/res, np.abs(np.min(full_pc_map[:,1]))/res])
+        #center = np.array([(gridSize-1)/2, (gridSize-1)/2])
+        #center = np.array([4/res,-1/res])
+        center = np.array([abs(np.min(full_pc_map[:,0]))/res, abs(np.min(full_pc_map[:,1]))/res])
 
         #Save the finalized map as pickle file
         pts = []
@@ -224,8 +216,28 @@ if __name__ == '__main__':
         pts = np.array(pts)
 
         r = R.from_euler('z', -np.pi/2)
-        rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) + (res * np.array([[center[0], center[1], 0]]).transpose())
+        #pts_offset = 
+        #This negative might just be needed because my minimum values are negative...
+        #rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) - (res * np.array([[center[0], center[1], 0]]).transpose())
+        #rotated_pts  = np.matmul(r.as_matrix(), pts.transpose()) + (res * np.array([[center[0], center[1], 0]]).transpose())
+        #All changes required to align point cloud with occupancy image:
+        #Offset map for the introdcution of the center
+        #Rotate because image is flipped also
+        #Add offset for the image starting from the bottom not the top...
+        rotated_pts = np.matmul(r.as_matrix(), pts.transpose() + (res * np.array([[center[0], center[1], 0]]).transpose())) + np.array([[0, gridSize*res, 0]]).transpose()
         rotated_pts = rotated_pts.transpose()
+
+
+        if bDisplay:
+            plt.scatter(rotated_pts[:,0], rotated_pts[:,1], color='blue')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.axis('equal')
+            fname = 'final_map.png'
+            fname = os.path.join(data_dir, fname)
+            plt.savefig(fname)
+            plt.show()
+
         fname = os.path.join(data_dir, MAP_FILE_NAME)
         with open(fname, 'wb') as handle:
             pickle.dump(rotated_pts, handle)

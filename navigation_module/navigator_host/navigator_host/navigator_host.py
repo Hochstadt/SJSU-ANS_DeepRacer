@@ -93,9 +93,9 @@ class navigatorHost(Node):
     def solution_found_listener(self, msg):
         bSolutionFound = msg.data
         if bSolutionFound == True:
-            self.get_logger().info('Localization Successful')
-            self.get_logger().info('Position: <%.4f %.4f %.4f>' % (self.point.x, self.point.y, self.point.z))
-            self.get_logger().info('Quaternion: <%.4f %.4f %.4f, %.4f>' % (self.quat.x, self.quat.y, self.quat.z, self.quat.w))
+            #self.get_logger().info('Localization Successful')
+            #self.get_logger().info('Position: <%.4f %.4f %.4f>' % (self.point.x, self.point.y, self.point.z))
+            #self.get_logger().info('Quaternion: <%.4f %.4f %.4f, %.4f>' % (self.quat.x, self.quat.y, self.quat.z, self.quat.w))
 
             #Debugging info
             with open('debug_map.pickle', 'wb') as handle:
