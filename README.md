@@ -177,8 +177,13 @@ Follow the process above to setup the `ssh_driver` which the GUI needs to interf
 ** Note ** - I had to Stop the deepracer-core.service else my ROS communication would not work
 `scripts/init_stop_core_services.sh`
 
+# Post-data Collection
+To run the required things for data collection from the main folder SJSU-ANS_etc, run
+```
+>>./data_collector/retrieve_data.sh
+```
 
-TODO....
+It expects arguments, but not putting any will display the brief help. This should generate the map files you'll need (although
+currently does not do a pcl file and creates a numpy array that can be turned into a PointCloud2 through the map_loader
+or through the navigator_host. This allows for a lot less dependnecy on things like pcd and pcl.
 
-## NExt steps:
-need to also collect, stream, and store lidar data and store the images. This would compose a 'collect'

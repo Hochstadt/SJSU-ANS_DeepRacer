@@ -17,7 +17,7 @@ DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
 ANS_INTERFACES_PATH="$CUR_PATH/ans_interfaces"
 bError=0
-bLC=0
+bLC=1
 
 #Default ros2 stuff
 if [ ! -d "/opt/ros/foxy" ]
@@ -57,6 +57,12 @@ cd $CUR_PATH
 #Additional car & host dependencies
 LASER_GEOM_PATH="$DEP_PATH/laser_geometry"
 COMMON_INF_PATH="$DEP_PATH/common_interfaces"
+ROS_NUMPY="$DEP_PATH/ros2_numpy"
+
+
+
+
+
 cd $DEP_PATH
 # laser_geom
 ####################################################################
@@ -93,6 +99,7 @@ else
 fi
 source $COMMON_INF_PATH/install/setup.bash
 
+cd $DEP_PATH
 # ans_interfaces
 ########################################################################3
 #Check if built
@@ -105,6 +112,25 @@ else
   echo "ans_interfaces already exists and is built"
 fi
 source $ANS_INTERFACES_PATH/install/setup.bash
+
+cd $DEP_PATH
+# ros2numpy
+########################################################################3
+#Check if built
+if [ ! -d "$ROS_NUMPY/build" ]
+then
+  if [ ! -d $ROS_NUMPY ]
+  then
+    echo "Cloning common interfaces"
+    git clone -b foxy-devel git@github.com:taylormaurer4323/ros2_numpy.git
+  fi
+  echo "Building ros2 numpy"
+  cd $ROS_NUMPY && colcon build
+else
+  echo "Common interfaces packages already exists and is built"
+fi
+source $ROS_NUMPY/install/setup.bash
+
 
 #######################################################
 ## NOW CHECK IF CAR VS. HOST
@@ -124,7 +150,6 @@ then
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
-  ROS_NUMPY="$DEP_PATH/ros2_numpy"
   AWS_DEEPRACER_NAV="$DEP_PATH/aws-deepracer"
 
   #Paths for custom packages
@@ -133,6 +158,9 @@ then
   DATA_COL_PATH="$CUR_PATH/data_collector"
   LOCALIZER_PATH="$CUR_PATH/navigation_module/localization"
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
+  NAVIGATOR_CAR="$CUR_PATH/navigation_module/navigator_car"
+  CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
+  
 
   cd $DEP_PATH
 
@@ -271,6 +299,7 @@ then
         echo "Building ssh_driver package"
         cd $SSH_DRIVER_PATH && colcon build
     fi
+    echo "sourcing ssh_driver"
     source $SSH_DRIVER_PATH/install/setup.bash
   fi
 
@@ -284,6 +313,7 @@ then
       echo "Building data collector package"
       cd $DATA_COL_PATH && colcon build
     fi
+    echo "sourcing data collector"
     source $DATA_COL_PATH/install/setup.bash
   fi
   #localizer
@@ -296,6 +326,7 @@ then
       echo "Building localization package"
       cd $LOCALIZER_PATH && colcon build
     fi
+    echo "sourcing localizer"
     source $LOCALIZER_PATH/install/setup.bash
   fi
 
@@ -309,6 +340,7 @@ then
       echo "Building lidar acquisition package"
       cd $LIDARACQ_PATH && colcon build
     fi
+    echo "sourcing lidar acq"
     source $LIDARACQ_PATH/install/setup.bash
   fi
 
@@ -324,6 +356,7 @@ then
         echo "Building controller package"
         cd $CONTROLLER_PATH && colcon build
       fi
+      echo "Sourcing controller"
       source $CONTROLLER_PATH/install/setup.bash
     fi
   fi
@@ -340,9 +373,25 @@ then
           echo "Building pid_control package"
           cd $PID_CONTROL_PATH && colcon build
       fi
+      echo "sourcing controller"
       source $PID_CONTROL_PATH/install/setup.bash
     fi
   fi
+  
+  #navigator car
+  ##########################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $NAVIGATOR_CAR/build ]
+    then
+      echo "Building navigator car package"
+      cd $NAVIGATOR_CAR && colcon build
+    fi
+    echo "Sourcing navigator_car"
+    source $NAVIGATOR_CAR/install/setup.bash
+  fi
+
 elif [ $1 = "host" ]
 then
   ####################################################################
@@ -352,10 +401,11 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
-  MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
   ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
   ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
   ANS_GUI_PATH="$CUR_PATH/ans_gui"
+  NAVIGATOR_HOST="$CUR_PATH/navigation_module/navigator_host"
+  PATH_PLANNER="$CUR_PATH/navigation_module/path_planner"
 
   #Rviz interface
   cd $CUR_PATH
@@ -414,18 +464,33 @@ then
   fi
   source $ANS_SERVER/install/setup.bash
 
-  #map_loader
+
+  #path_planner
+  ##########################################33
+    
+  cd $CUR_PATH
+  if [ ! -d "$PATH_PLANNER/build" ]
+  then
+    echo "building path planner"
+    cd $PATH_PLANNER && colcon build
+  else
+    echo "path planner host already built"
+  fi
+  source $PATH_PLANNER/install/setup.bash
+
+
+  #navigator_host
   ##########################################33
 
   cd $CUR_PATH
-  if [ ! -d "$MAP_LOADER/build" ]
+  if [ ! -d "$NAVIGATOR_HOST/build" ]
   then
-    echo "building map loader"
-    cd $MAP_LOADER && colcon build
+    echo "building navigator host"
+    cd $NAVIGATOR_HOST && colcon build
   else
-    echo "map loader already built"
+    echo "navigator host already built"
   fi
-  source $MAP_LOADER/install/local_setup.bash
+  source $NAVIGATOR_HOST/install/setup.bash
 
 else
   echo "'$1' is not an understood argument, try one of the following"
