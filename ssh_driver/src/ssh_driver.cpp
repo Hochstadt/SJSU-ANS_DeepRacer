@@ -25,16 +25,22 @@ class SshDriver : public rclcpp::Node
             //    "cmd_vel", 10, std::bind(&SshDriver::acceptCmd, this, _1));
             mSubscription = this->create_subscription<geometry_msgs::msg::Twist>(
                 "cmd_vel", 10, std::bind(&SshDriver::acceptCmd, this, _1));
-	    mServoGPIOClient = this->create_client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>("/servo_pkg/servo_gpio");
+            mServoGPIOClient = this->create_client<deepracer_interfaces_pkg::srv::ServoGPIOSrv>("/servo_pkg/servo_gpio");
             //setup quality of service profile (ref. deepracer)
             //keeplast - will keep single sample
             auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
             //besteffort - will try to deliver samples, but may lose them if network is bad
             qos.best_effort();
                                               //<deepracer_interfaces_pkg::msg::ServoCtrlMsg>
-	    mServoPub = this->create_publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>("/ctrl_pkg/servo_msg", qos);
-
-
+            std::string servo_msg_publisher;
+            declare_parameter("servo_msg_publisher");
+            get_parameter("servo_msg_publisher", servo_msg_publisher);
+            // Paremeter determines that ssh_drive is publishing servo messages
+            if (strcmp(stdcservo_msg_publisher, "ssh_driver") == 0)
+            {
+                bPublishServoMsg = true;
+                mServoPub = this->create_publisher<deepracer_interfaces_pkg::msg::ServoCtrlMsg>("/ctrl_pkg/servo_msg", qos);
+            }
         }
 
     private:
@@ -171,9 +177,7 @@ class SshDriver : public rclcpp::Node
                 } else {
                     servoMsg.throttle = mThrottle;
                 }
-                // TODO - Uncomment this! Temporary to give me servo control. The logic here for sending servo messages
-                //        isn't really compatible with the joystick control in the GUI. Using "cmdvel_to_servo_pkg" for now
-                // mServoPub->publish(servoMsg);
+                if(bPublishServoMsg) mServoPub->publish(servoMsg);
             }
         }
 
@@ -267,6 +271,7 @@ class SshDriver : public rclcpp::Node
 	bool bStop = true;
         bool bReverse = false;
         bool bDrive = false;
+        bool bPublishServoMsg = false;
 	bool bServoGPIOOn = false;
 	float mThrottle = 0.0; //start at 50%
 	float mSteering = 0;

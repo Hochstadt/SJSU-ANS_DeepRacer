@@ -351,7 +351,7 @@ text-decoration: underline;</string>
            <number>10</number>
           </property>
           <item alignment="Qt::AlignHCenter|Qt::AlignTop">
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="image_title">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -398,19 +398,22 @@ text-decoration: underline;</string>
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="map_layout">
+         <layout class="QVBoxLayout" name="map_layout" stretch="1,10">
+          <property name="spacing">
+           <number>0</number>
+          </property>
           <property name="topMargin">
            <number>10</number>
           </property>
           <item alignment="Qt::AlignHCenter|Qt::AlignTop">
-           <widget class="QLabel" name="label_3">
+           <widget class="QLabel" name="map_title">
             <property name="text">
              <string>Mapped Environment</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label">
+           <widget class="QLabel" name="map_label">
             <property name="text">
              <string>Occupancy Map</string>
             </property>
@@ -433,7 +436,7 @@ text-decoration: underline;</string>
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
