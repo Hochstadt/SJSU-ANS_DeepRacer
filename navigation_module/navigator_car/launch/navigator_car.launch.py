@@ -66,11 +66,11 @@ def generate_launch_description():
         executable='vel_controller',
         parameters=[{
                 'bIMU': bIMU,
-                'velKp': 0.5,
-                'velKi': 0.0008,
-                'velKd': 0.0,
-                'rotKp': 1.0,
-                'rotKi': 0.005,
+                'velKp': 2.7,
+                'velKi': 0.030,
+                'velKd': 0.001,
+                'rotKp': 0.7,
+                'rotKi': 0.001,
                 'rotKd': 0.0
             }]            
         )

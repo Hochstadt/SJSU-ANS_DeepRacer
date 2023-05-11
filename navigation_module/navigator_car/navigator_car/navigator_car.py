@@ -149,7 +149,8 @@ class navigatorCar(Node):
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.next_spose = self.path.poses[self.path_index]
                     self.path_index-=1
-            elif abs(np.rad2deg(waypoint_heading)) > 90:
+            #elif abs(np.rad2deg(waypoint_heading)) > 90:
+            elif adj_length <= 0:
                 #This is the indicator we missed it... so move on and forget
                 self.get_logger().info('BOOOOOO Waypoing missed')
                 #if self.path_index >= len(self.path.poses):
