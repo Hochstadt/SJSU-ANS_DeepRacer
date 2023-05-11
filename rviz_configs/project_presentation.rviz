@@ -12,9 +12,9 @@ Panels:
         - /Pose1
         - /Pose2
         - /Pose2/Topic1
-        - /Map1/Status1
         - /Map1/Topic1
-        - /Path1
+        - /Path1/Topic1
+        - /Pose3
       Splitter Ratio: 0.5
     Tree Height: 671
   - Class: rviz_common/Selection
@@ -185,10 +185,10 @@ Visualization Manager:
       Class: rviz_default_plugins/Path
       Color: 25; 255; 0
       Enabled: true
-      Head Diameter: 0.20000000298023224
+      Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Billboards
+      Line Style: Lines
       Line Width: 0.029999999329447746
       Name: Path
       Offset:
@@ -205,7 +205,26 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /navigator_car/global_path
+        Value: /path_planner/path
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz_default_plugins/Pose
+      Color: 0; 25; 255
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.25
+      Name: Pose
+      Shaft Length: 0.75
+      Shaft Radius: 0.05000000074505806
+      Shape: Axes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /controller/next_waypoint
       Value: true
   Enabled: true
   Global Options:
@@ -251,7 +270,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 13.933955192565918
+      Distance: 15.970952987670898
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -266,10 +285,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6497974991798401
+      Pitch: 0.5197974443435669
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.343587875366211
+      Yaw: 1.0504027605056763
     Saved: ~
 Window Geometry:
   Displays:
