@@ -100,7 +100,7 @@ class velController(Node):
                                                         self.pose_receiver, 
                                                         qos_profile=qos_profile)
         self.waypoint_heading = -1
-        self.waypoint_subscriber = self.create_subscription(PoseStamped,
+        self.waypoint_subscriber = self.create_subscription(Float32,
                                                         '/controller/waypoint_heading',
                                                         self.waypoint_heading_receiver, 
                                                         qos_profile=qos_profile)
@@ -165,6 +165,7 @@ class velController(Node):
             self.mSteering = 0
     def waypoint_heading_receiver(self, msg):
         self.waypoint_heading = msg.data
+        self.get_logger().info('Waypoing: %.4f' % self.waypoint_heading)
 
     def pose_receiver(self, msg):
         if self.bIMU == False:
@@ -187,7 +188,7 @@ class velController(Node):
             #Get out DCMs
             Rref_car = rcar.as_matrix()
 
-            if self.bHaveData == True and not self.waypoint_heading == -1:
+            if self.bHaveData == True and self.waypoint_heading != -1:
 
                 dtime = (datetime.now() - self.prev_time).total_seconds()
 
@@ -214,7 +215,8 @@ class velController(Node):
 
                         #Update the PID
                         vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                        rot_err = self.angvel_pid.update(float(self.waypoint_heading))
+                        #To make the correct mapping okay, have to add -1
+                        rot_err = self.angvel_pid.update(float(-1.0*self.waypoint_heading))
                         self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
             
