@@ -14,6 +14,7 @@ from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import PoseStamped
 #from geometry_msgs.msg import Pose
 from std_msgs.msg import Bool
+from std_msgs.msg import Float32
 
 #Python
 import numpy as np
@@ -53,6 +54,10 @@ class navigatorCar(Node):
                                                         '/localization/pose',
                                                         self.pose_listener, 
                                                         qos_profile=qos_profile)
+        
+        self.waypoint_publisher = self.create_publisher(Float32,
+                                                   '/controller/waypoint_heading', 
+                                                   qos_profile=qos_profile)
         
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -157,8 +162,8 @@ class navigatorCar(Node):
 
             #update the command            
             if self.bSolution == True:
-                #cmd_theta = way_theta
-                cmd_theta = cmd_angle
+                #Always wat to set this to 0
+                cmd_theta = 0.0
                 cmd_vel = self.avg_vel
             else:
                 self.get_logger().info('No solution, velocity and rotation set to 0')

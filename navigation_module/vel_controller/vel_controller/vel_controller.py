@@ -8,6 +8,8 @@ from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Pose
+
 from std_msgs.msg import Float32
 from std_msgs.msg import Float32MultiArray
 from deepracer_interfaces_pkg.msg import ServoCtrlMsg
@@ -92,11 +94,17 @@ class velController(Node):
         self.y_car = []
         self.theta_world = []
         self.prev_time = [] 
-        self.prev_pt_car = -1
+        self.prev_tcar_ref = -1
         self.pose_subscriber = self.create_subscription(PoseStamped,
                                                         '/localization/pose',
                                                         self.pose_receiver, 
                                                         qos_profile=qos_profile)
+        self.waypoint_heading = -1
+        self.waypoint_subscriber = self.create_subscription(PoseStamped,
+                                                        '/controller/waypoint_heading',
+                                                        self.waypoint_heading_receiver, 
+                                                        qos_profile=qos_profile)
+        
         #The be all publisher
         self.throttle_pub = self.create_publisher(
                  ServoCtrlMsg,
@@ -155,7 +163,9 @@ class velController(Node):
             self.angvel_pid = PID(rotKp, rotKi, rotKd)
             self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
             self.mSteering = 0
-        
+    def waypoint_heading_receiver(self, msg):
+        self.waypoint_heading = msg.data
+
     def pose_receiver(self, msg):
         if self.bIMU == False:
             #I think for this following commetned block to work you'd have
@@ -165,30 +175,27 @@ class velController(Node):
                 #if origin not defined then do so (note 
                 # the origin will be constantly redefined where it will
                 # always be the start of the way point. )
-            flipR = R.from_euler('z', 0, degrees=True)
-            
-            if self.bHaveData == True:
 
-                pt = msg.pose.position
-                q = msg.pose.orientation            
-                r = R.from_quat([q.x, q.y, q.z, q.w])
+
+
+            tcar_ref = msg.pose.position
+            tcar_ref = np.array([tcar_ref.x, tcar_ref.y, tcar_ref.z]) 
+            car_q = msg.pose.orientation
+            car_q = np.array([car_q.x, car_q.y, car_q.z, car_q.w])
+            #Convert to the rot obj
+            rcar = R.from_quat(car_q)
+            #Get out DCMs
+            Rref_car = rcar.as_matrix()
+
+            if self.bHaveData == True and not self.waypoint_heading == -1:
+
                 dtime = (datetime.now() - self.prev_time).total_seconds()
 
-                
-                Rmat = np.matmul(flipR.as_matrix(), r.as_matrix())
-                eangles = r.as_euler('zyx')
-                meas_theta_world = eangles[0]
-                pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
-                #identify instantaneous velocity...
-                #self.get_logger().info('Current Point: <%.4f, %.4f> vs. Previous Point <%.4f, %.4f> Making difference of <%.4f, %.4f>' % 
-                #                       (pt_car[0], pt_car[1], self.prev_pt_car[0], self.prev_pt_car[1], 
-                #                        pt_car[0] - self.prev_pt_car[0],
-                #                        pt_car[1] - self.prev_pt_car[1]))
-                #self.get_logger().info('Delta Time: %.4f' % dtime)
-                #Seems like the frames are off, so just adding this absolute term so velocity is always positive
-                meas_vel_x_car = abs(pt_car[0] - self.prev_pt_car[0])/dtime
+                deltat_car = np.matmul(Rref_car.transpose(), self.prev_tcar_ref - tcar_ref)
+                meas_vel_x_car = abs(deltat_car[0])/dtime
+
                 #compare self.prev_increment to what the speed change is detected as
-                meas_vel_y_car = (pt_car[1] - self.prev_pt_car[1])/dtime
+
                 if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
                     self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
                         (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
@@ -201,12 +208,13 @@ class velController(Node):
                     #tmpmSteering = 0
                 else:
                     if self.bCmdReceived == True:
-                        self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
-                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
+                        self.get_logger().info('Measured Velocity: <%.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, self.vel_pid.SetPoint))
+                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % 
+                                               (np.rad2deg(self.waypoint_heading), np.rad2deg(self.angvel_pid.SetPoint)))
 
                         #Update the PID
                         vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                        rot_err = self.angvel_pid.update(float(meas_theta_world))
+                        rot_err = self.angvel_pid.update(float(self.waypoint_heading))
                         self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
             
@@ -242,15 +250,8 @@ class velController(Node):
             #else:
             #need to define prev items
             self.prev_time = datetime.now()
-            self.bHaveData = True
-            pt = msg.pose.position
-            q = msg.pose.orientation  
-            r = R.from_quat([q.x, q.y, q.z, q.w])
-            Rmat = np.matmul(flipR.as_matrix(), r.as_matrix())
-            self.prev_pt_car = np.matmul(Rmat.transpose(), -1 * np.array([pt.x, pt.y, 0]))
-
-
-
+            self.bHaveData = True            
+            self.prev_tcar_ref = tcar_ref
 
     def euler_from_quaternion(self, x, y, z, w):
         t0 = +2.0 * (w * x + y * z)
