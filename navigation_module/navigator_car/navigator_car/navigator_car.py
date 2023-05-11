@@ -87,80 +87,47 @@ class navigatorCar(Node):
         self.current_state = msg.pose
         if self.bReceivedPath == True and self.bNoiseChar == True:
             #Check if we've hit the waypoint
-            cur_pos = self.current_state.position
-            way_pos = self.next_pose.position
-            cur_or = self.current_state.orientation
-            next_or = self.next_pose.orientation
-            #self.aFlip = R.from_euler('z', np.pi/2)
-
-            #Flip into this frame (hopefully)
-            #cur_pos, cur_or = self.flip_input(cur_pos, self.current_state.orientation)
-            #way_pos, next_or = self.flip_input(way_pos, self.next_pose.orientation)
-            cur_pos = np.array([cur_pos.x, cur_pos.y, cur_pos.z])
-            way_pos = np.array([way_pos.x, way_pos.y, way_pos.z])
-            cur_or = np.array([cur_or.x, cur_or.y, cur_or.z, cur_or.w])
-            next_or = np.array([next_or.x, next_or.y, next_or.z, next_or.w])
-            cur_theta = self.quat_to_thetav2(cur_or)
-            way_theta = self.quat_to_thetav2(next_or)
+            tcar_ref = self.current_state.position
+            tway_ref = self.next_pose.position
+            car_q = self.current_state.orientation
+            way_q = self.next_pose.orientation
+            #Convert into np arrays
+            tcar_ref = np.array([tcar_ref.x, tcar_ref.y, tcar_ref.z])
+            tway_ref = np.array([tway_ref.x, tway_ref.y, tway_ref.z])
+            car_q = np.array([car_q.x, car_q.y, car_q.z, car_q.w])
+            way_q = np.array([way_q.x, way_q.y, way_q.z, way_q.w])
+            #Convert to the rot obj
+            rcar = R.from_quat(car_q)
+            rway = R.from_quat(way_q)
+            #Get out DCMs
+            Rref_car = rcar.as_matrix()
+            Rref_way = rway.as_matrix()
+            
 
             self.get_logger().info('LOCATION---------------------')
             self.get_logger().info('Current Position: <%.4f, %.4f, %.4f> rotation: <%.4f, %.4f, %.4f, %.4f>' %
-                (cur_pos[0], cur_pos[1], cur_pos[2], cur_or[0], cur_or[1], cur_or[2], cur_or[3]))
-            self.get_logger().info('Current rotation angle: %.4f' % np.rad2deg(cur_theta))
+                (tcar_ref[0], tcar_ref[1], tcar_ref[2], car_q[0], car_q[1], car_q[2], car_q[3]))
             self.get_logger().info('Next Waypoint: <%.4f, %.4f, %.4f> rotation: <%.4f, %.4f, %.4f, %.4f>' %
-                (way_pos[0], way_pos[1], way_pos[2], next_or[0], next_or[1], next_or[2], next_or[3]))
-            self.get_logger().info('Next waypoints theta %.4f' % np.rad2deg(way_theta))
+                (tway_ref[0], tway_ref[1], tway_ref[2], way_q[0], way_q[1], way_q[2], way_q[3]))
 
+            #assess differences in reference frame
+            dx = tway_ref[0] - tcar_ref[0]
+            dy = tway_ref[1] - tcar_ref[1]
 
-            r = R.from_quat(next_or) 
-
-            way_car = np.matmul(r.as_matrix().transpose(), way_pos)
-            cur_car= np.matmul(r.as_matrix().transpose(), cur_pos)
-            dx_car = way_car[0] - cur_car[0]
-            dy_car = way_car[1] - cur_car[1]
-            #X points straight out (I think), so redefine this
-            waypoint_heading_car = np.arctan(dy_car/dx_car)
-            self.get_logger().info('CAR FRAME')
-            self.get_logger().info('way car: <%.4f, %.4f> cur car <%.4f, %.4f>, diff = <%.4f %.4f' % 
-                (way_car[0], way_car[1], cur_car[0], cur_car[1], dx_car, dy_car))
-            self.get_logger().info('theta = %.4f' % np.rad2deg(waypoint_heading_car))
-            #cur_theta = self.quat_to_theta(self.current_state.orientation)
-            #way_theta = self.quat_to_theta(self.next_pose.orientation)
-            #qway  = self.next_pose.orientation
-            #qway  = next_or
-            #r = R.from_quat([qway.x, qway.y, qway.z, qway.w])
-            #dx = (cur_pos.x - way_pos.x)
-            #dx = (way_pos.x - cur_pos.x)
-            dx = way_pos[0] - cur_pos[0]
-            #dy = (cur_pos.y - way_pos.y)
-            #dy = (way_pos.y - cur_pos.y)
-            dy = way_pos[1] - cur_pos[1]
-            #vect_car = -1.0*np.matmul(np.matmul(aFlip.as_matrix(), r.as_matrix().transpose()), np.array([dx, dy, 0]))
+            #Translate the waypoint into the car frame
+            way_car = np.matmul(Rref_car.transpose(), tway_ref - tcar_ref)
+            #Reconstruct the angle
+            opp_length = way_car[1]
+            adj_length = way_car[0]
+            waypoint_heading = np.arctan(opp_length/adj_length)
              
-            vect_car = np.matmul(r.as_matrix().transpose(), np.array([dx, dy, 0]))
-            waypoint_car = np.matmul(r.as_matrix().transpose(), np.array([way_pos[0], way_pos[1], 0]))
-            self.get_logger().info('Waypoint in car frame: <%.4f %.4f>' % (waypoint_car[0], waypoint_car[1]))
-            self.get_logger().info('Vector in world frame: <%.4f, %.4f> - vector in car frame: <%.4f, %.4f>' %
-                (dx, dy, vect_car[0], vect_car[1]))
-            x_unit = np.array([1,0 ,0])
-            waypoint_heading_angle = np.arccos(np.dot(vect_car, x_unit)/(np.linalg.norm(x_unit) * np.linalg.norm(vect_car)))
-            waypoint_sign = np.cross(vect_car, x_unit)
-            otherwaypoint_sign = np.cross(vect_car, -x_unit)
-            waypoint_sign = waypoint_sign[-1]
-            otherwaypoint_sign = otherwaypoint_sign[-1]
-            #Better way to get the angle
-            waypoint_heading_angle = np.arctan(dx/dy)
-            dtheta = (cur_theta - way_theta)
-            off_heading = waypoint_heading_angle - cur_theta
-            #I think this works... trying to teest but the car shit out on me and so did
-            # the path planner. Will have to try again tomorrw, the testing is slow going
-            # Basically want to make sure that positive is for left and negative is for right
-            # otherwise will need to flip it
             #other things, need to make sure the motion along the path works
             # and then also, make sure to change the constant 4 value below back to 1 or 2 
-            cmd_angle = waypoint_heading_car
+            cmd_angle = waypoint_heading
+            self.get_logger().info('CAR FRAME LOCATION ----------------')
+            self.get_logger().info('Waypoint: <%.4f, %.4f, %.4f>' % (way_car[0], way_car[1], way_car[2]))
+            self.get_logger().info('Waypoint heading: %.4f degrees' % np.rad2deg(waypoint_heading))
     
-            self.get_logger().info('Waypoint Heading = %.4f, direction %.4f, otherdir %.4f, difference is %.4f' % (np.rad2deg(waypoint_heading_angle), waypoint_sign, otherwaypoint_sign, np.rad2deg(off_heading)))
             #If you miss the rotation, hopefully it's not that bad.... but you can't really do a complete 180 in place or wahtever
             if abs(dx) < self.x_limit and abs(dy) < self.y_limit:# and abs(dtheta) < self.theta_limit:
                 self.get_logger().info('HOOOOOOORAY!   Achieved Waypoint with the following stats')
@@ -174,7 +141,7 @@ class navigatorCar(Node):
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.next_spose = self.path.poses[self.path_index]
                     self.path_index-=1
-            elif np.rad2deg(waypoint_heading_angle) > 90:
+            elif abs(np.rad2deg(waypoint_heading)) > 90:
                 #This is the indicator we missed it... so move on and forget
                 self.get_logger().info('BOOOOOO Waypoing missed')
                 #if self.path_index >= len(self.path.poses):
@@ -186,12 +153,6 @@ class navigatorCar(Node):
                     self.next_spose = self.path.poses[self.path_index]
                     self.path_index-=1
         
-            #self.get_logger().info('Current pos <%.4f, %.4f> %.4f deg vs. Waypoint pos <%.4f, %.4f> %.4f deg' 
-            #                        % (cur_pos[0], cur_pos[1], np.rad2deg(cur_theta), way_pos[0], way_pos[1], np.rad2deg(way_theta)))
-                               #     % (cur_pos.x, cur_pos.y, cur_theta,
-                               #         way_pos.x, way_pos.y, way_theta))
-            #self.get_logger().info('Deltas <%.4f, %.4f> %.4f deg' %
-            #                        (dx, dy, np.rad2deg(dtheta)))
 
             #update the command            
             if self.bSolution == True:
@@ -235,7 +196,7 @@ class navigatorCar(Node):
             #sleep(4.0)        
             self.path_index = len(self.path.poses)-1
             start_pose = self.path.poses[self.path_index].pose
-            self.path_index-=5
+            self.path_index-=2
             #Try to understand the deviations from the current state (as ideally
             # they should be near identical. Can characterize the noise this way)
             dx = self.current_state.position.x - start_pose.position.x
