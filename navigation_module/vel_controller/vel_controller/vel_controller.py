@@ -100,7 +100,7 @@ class velController(Node):
                                                         self.pose_receiver, 
                                                         qos_profile=qos_profile)
         self.waypoint_heading = -1
-        self.waypoint_subscriber = self.create_subscription(PoseStamped,
+        self.waypoint_subscriber = self.create_subscription(Float32,
                                                         '/controller/waypoint_heading',
                                                         self.waypoint_heading_receiver, 
                                                         qos_profile=qos_profile)
@@ -165,6 +165,7 @@ class velController(Node):
             self.mSteering = 0
     def waypoint_heading_receiver(self, msg):
         self.waypoint_heading = msg.data
+        self.get_logger().info('Waypoing: %.4f' % self.waypoint_heading)
 
     def pose_receiver(self, msg):
         if self.bIMU == False:
@@ -187,7 +188,7 @@ class velController(Node):
             #Get out DCMs
             Rref_car = rcar.as_matrix()
 
-            if self.bHaveData == True and not self.waypoint_heading == -1:
+            if self.bHaveData == True and self.waypoint_heading != -1:
 
                 dtime = (datetime.now() - self.prev_time).total_seconds()
 
@@ -196,9 +197,10 @@ class velController(Node):
 
                 #compare self.prev_increment to what the speed change is detected as
 
-                if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
-                    self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
-                        (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
+                #if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
+                #    self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
+                #        (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
+                if False:
                     
                 #    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
                 #    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
@@ -213,8 +215,10 @@ class velController(Node):
                                                (np.rad2deg(self.waypoint_heading), np.rad2deg(self.angvel_pid.SetPoint)))
 
                         #Update the PID
+                        #vel_err = self.vel_pid.update(float(meas_vel_x_car))
                         vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                        rot_err = self.angvel_pid.update(float(self.waypoint_heading))
+                        #To make the correct mapping okay, have to add -1
+                        rot_err = self.angvel_pid.update(float(-1.0*self.waypoint_heading))
                         self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
             
@@ -222,11 +226,11 @@ class velController(Node):
                         self.prev_increment = tmpmThrottle
                         self.prev_vel = meas_vel_x_car
                         self.mSteering = self.angvel_pid.output
-
+                        self.mThrottle = self.vel_pid.output
                 if self.bCmdReceived == True:
                     if tmpmThrottle is not None:
                         self.get_logger().info('Controller output, throttle inc %.4f, rotation %.4f' % (tmpmThrottle, self.mSteering))
-                        self.mThrottle+=tmpmThrottle 
+                        #self.mThrottle+=tmpmThrottle 
                         servoMsg = ServoCtrlMsg()
                         if self.mThrottle > 1.0:
                             self.mThrottle = 1.0

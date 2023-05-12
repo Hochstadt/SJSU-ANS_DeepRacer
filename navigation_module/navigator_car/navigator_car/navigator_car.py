@@ -57,7 +57,7 @@ class navigatorCar(Node):
         
         self.waypoint_publisher = self.create_publisher(Float32,
                                                    '/controller/waypoint_heading', 
-                                                   qos_profile=qos_profile)
+                                                   1)
         
         qos_profile = QoSProfile(
                 reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -126,7 +126,9 @@ class navigatorCar(Node):
             opp_length = way_car[1]
             adj_length = way_car[0]
             waypoint_heading = np.arctan(opp_length/adj_length)
-             
+            waypoint_heading_float = Float32()
+            waypoint_heading_float.data = waypoint_heading
+            self.waypoint_publisher.publish(waypoint_heading_float)
             #other things, need to make sure the motion along the path works
             # and then also, make sure to change the constant 4 value below back to 1 or 2 
             cmd_angle = waypoint_heading
@@ -147,7 +149,8 @@ class navigatorCar(Node):
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.next_spose = self.path.poses[self.path_index]
                     self.path_index-=1
-            elif abs(np.rad2deg(waypoint_heading)) > 90:
+            #elif abs(np.rad2deg(waypoint_heading)) > 90:
+            elif adj_length <= 0:
                 #This is the indicator we missed it... so move on and forget
                 self.get_logger().info('BOOOOOO Waypoing missed')
                 #if self.path_index >= len(self.path.poses):
