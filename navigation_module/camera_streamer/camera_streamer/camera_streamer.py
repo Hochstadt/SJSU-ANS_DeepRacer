@@ -124,9 +124,9 @@ class cameraStreamer(Node):
 def main(args=None):
     rclpy.init(args=args)
     
-    data_collector = dataCollector()
+    camera_streamer= cameraStreamer()
     print('Spinning Node...')
-    rclpy.spin(data_collector)
+    rclpy.spin(camera_streamer)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
