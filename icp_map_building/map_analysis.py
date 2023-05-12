@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 # %%
 # Load the map
-analysis_map_file = '../data/slowish_okay2/map_file.pickle'
+analysis_map_file = 'data/slowish_okay2/map_file.pickle'
 
 with open(analysis_map_file, 'rb') as handle:
     pts = pickle.load(handle)
@@ -71,28 +71,63 @@ def extract_object(object, object_radius):
     
     return valid_pts, bb
 
-
-plt.plot(pts[0,:], pts[1,:], '.', color='black')
+font = {'family' : 'normal',
+        'weight' : 'bold', 
+        'size' : 22}
+plt.rc('font', **font)
+msize = 10
+plt.plot(pts[0,:], pts[1,:], '.', color='black', markersize=msize)
 #box
 box_pts, box_bb = extract_object(box, box_radius)
-plt.plot(box_pts[0,:], box_pts[1,:], '.', color='red')
-plt.plot(box[0],box[1], '*', color='red')
+plt.plot(box_pts[0,:], box_pts[1,:], '.', color='red', markersize=msize)
 #table
 table_pts, table_bb = extract_object(table, table_radius)
-plt.plot(table_pts[0,:], table_pts[1,:], '.', color='blue')
-plt.plot(table[0], table[1], '*', color='blue')
+plt.plot(table_pts[0,:], table_pts[1,:], '.', color='blue', markersize=msize)
 #4x4
 wood_pts, wood_bb = extract_object(wood, wood_radius)
-plt.plot(wood_pts[0,:], wood_pts[1,:], '.', color='magenta')
-plt.plot(wood[0], wood[1], '*', color='magenta')
+plt.plot(wood_pts[0,:], wood_pts[1,:], '.', color='magenta', markersize=msize)
 #cylinder
 cyl_pts, cyl_bb = extract_object(thin_cylinder, cylinder_radius)
-plt.plot(cyl_pts[0,:], cyl_pts[1,:], '.', color='green')
-plt.plot(thin_cylinder[0], thin_cylinder[1], '*', color='green')
+plt.plot(cyl_pts[0,:], cyl_pts[1,:], '.', color='green', markersize=msize)
+plt.title('Test Area')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
 plt.grid('on')
 plt.axis('equal')
 plt.show()
 
+
+# %% 
+#Plot close-ups
+msize = 25
+plt.plot(box_pts[0,:], box_pts[1,:], '.', color='red', markersize=msize)
+plt.title('Cardboard Box')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
+plt.grid('on')
+plt.axis('equal')
+plt.show()
+plt.plot(table_pts[0,:], table_pts[1,:], '.', color='blue', markersize=msize)
+plt.title('Table')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
+plt.grid('on')
+plt.axis('equal')
+plt.show()
+plt.plot(wood_pts[0,:], wood_pts[1,:], '.', color='magenta', markersize=msize)
+plt.title('4" x 4" Wood Block')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
+plt.grid('on')
+plt.axis('equal')
+plt.show()
+plt.plot(cyl_pts[0,:], cyl_pts[1,:], '.', color='green', markersize=msize)
+plt.title('Small Cylinder')
+plt.xlabel('X (m)')
+plt.ylabel('Y (m)')
+plt.grid('on')
+plt.axis('equal')
+plt.show()
 #%%
 #Now decompose each object and try to assess dimensionality
 #
@@ -118,6 +153,7 @@ def box_analysis(object_pts, bb, true_w, true_l):
     bb_perimeter = bb_w * 2 + bb_h * 2
     actual_perimeter = true_w * 2 + true_l*2
     actual_area = true_w * true_l
+    print('BB Height: ', bb_h, 'BB Width: ', bb_w)
     print('Actual perimeter: ', actual_perimeter, 'measured perimeter', hull_perimeter)
     print('Actual area: ', actual_area, 'measured area', hull_area)
     print('box iou, ', box_iou)
