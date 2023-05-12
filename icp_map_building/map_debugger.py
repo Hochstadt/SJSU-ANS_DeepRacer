@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from IPython.display import display, clear_output
 import rclpy 
 from datetime import datetime
+from scipy.spatial.transform import Rotation as R
+
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose.hpp>
@@ -70,7 +72,7 @@ for i in range(0, hand_path.shape[1]-1):
     pts_x = np.linspace(st_x, ed_x, num=sample_num)
     pts_y = np.linspace(st_y, ed_y, num=sample_num)
     if np.any(total_pts):
-        total_pts = np.hstack((total_pts, np.array([pts_x[1:-1], pts_y[1:-1]])))
+        total_pts = np.hstack((total_pts, np.array([pts_x[0:-1], pts_y[0:-1]])))
         total_rots = np.hstack((total_rots, np.ones(sample_num)*rotangle))
         
     else:
@@ -80,14 +82,14 @@ for i in range(0, hand_path.shape[1]-1):
 total_rots = np.array(total_rots)
 #%%
 print(icp.euler_from_quaternion(rot[0], rot[1], rot[2], rot[3]))
-'''
+
 plt.plot(pts[:,0],pts[:,1], '*', color='red', markersize=5)
 plt.plot(pos[0], pos[1], 'x', color='green', markersize=5)
 plt.plot(total_pts[0,:], total_pts[1,:], '.', color='green')
 plt.plot(debug_points[0,:], debug_points[1,:], '.', color='blue', markersize=5)
 plt.axis('equal')
 plt.show()
-'''
+
 #Now convert to the appropriate parameters
 epoch = datetime.now()
 myHeader = Header()
@@ -123,5 +125,10 @@ for i in range(0, total_pts.shape[1]):
     myPath.poses.append(tmpPS)
 
 
+first_pose = myPath.poses[0]
+q = first_pose.pose.orientation
+p = first_pose.pose.position
+r = R.from_quat([q.x, q.y, q.z, q.w])
+rmat = r.as_matrix()
+np.matmul(rmat, np.array([1, 0, 0]))
 
-# %%

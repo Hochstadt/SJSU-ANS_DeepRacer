@@ -159,5 +159,13 @@ Where the first argument is the IP address of the deepracer and the second argum
 data you want to a data directory in the root folder and then convert the pc2 to numpy arrays as well as create a video. This is done so that 
 as much processing is moved to the host comptuer as possible.
 
-## NExt steps:
-need to also collect, stream, and store lidar data and store the images. This would compose a 'collect'
+# Post-data Collection
+To run the required things for data collection from the main folder SJSU-ANS_etc, run
+```
+>>./data_collector/retrieve_data.sh
+```
+
+It expects arguments, but not putting any will display the brief help. This should generate the map files you'll need (although
+currently does not do a pcl file and creates a numpy array that can be turned into a PointCloud2 through the map_loader
+or through the navigator_host. This allows for a lot less dependnecy on things like pcd and pcl.
+

@@ -127,7 +127,8 @@ class Path_Planner(Node):
         self.occMap = Map(msg)
 
         # Set waitForPlan flag to true
-        self.waitForPlan = True
+        #Commenting this out since map is repeatedly being sent so don't want to continually re-plan
+        # self.waitForPlan = True
         self.mapReady   = True
 
     def store_goal_state(self, goalMsg):
@@ -136,8 +137,22 @@ class Path_Planner(Node):
         self.get_logger().info("Goal State received")
 
         # Initialize Goal State Pose
+        
         self.goalState = State.from_pose(goalMsg.pose)
-
+        self.get_logger().info("Temporarily overriding the goal state for testing")
+        tmpGoal = Pose()
+        tmpGoal.position.x = 3.9345617294311523
+        tmpGoal.position.y = 9.877911567687988
+        tmpGoal.position.z = 0.0
+        tmpGoal.orientation.x = 0.0
+        tmpGoal.orientation.y = 0.0
+        tmpGoal.orientation.z = 0.7506414881630668
+        tmpGoal.orientation.w = 0.6607097367591434
+        
+        self.get_logger().info("Goal state: <%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f>" % 
+                               (tmpGoal.position.x, tmpGoal.position.y, tmpGoal.position.z,
+                                tmpGoal.orienation.x,tmpGoal.orientation.y,tmpGoal.orientation.z, tmpGoal.orientation.w))
+        self.goalState = tmpGoal
         # Set waitForPlan flag to true
         self.waitForPlan = True
         self.goalReady   = True

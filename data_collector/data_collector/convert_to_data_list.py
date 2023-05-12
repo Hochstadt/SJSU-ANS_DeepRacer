@@ -47,7 +47,7 @@ if __name__ == '__main__':
         for f in files:
             #split
             file_time = re.findall('\d\d', f)
-            if file_time is not None:
+            if file_time is not None and any(file_time) == True:
                 day = int(file_time[0])
                 hour = int(file_time[1])
                 minute = int(file_time[2])

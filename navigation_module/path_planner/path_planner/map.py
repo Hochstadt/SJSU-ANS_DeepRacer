@@ -7,7 +7,7 @@
 # for Foxy and Humble                                #
 ###################################################### 
 
-rom nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point
 from scipy.spatial.transform import Rotation as R
 import math

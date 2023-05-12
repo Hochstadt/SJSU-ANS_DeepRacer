@@ -7,6 +7,8 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
+from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Pose
 
 from std_msgs.msg import Float32
 from std_msgs.msg import Float32MultiArray
@@ -20,44 +22,42 @@ import numpy as np
 import math
 from .PID import PID
 from scipy import integrate
+from scipy.spatial.transform import Rotation as R
 
 
 class velController(Node):
-    SAMPLE_TIME =.5 
+    SAMPLE_TIME =.1 
     def __init__(self):
         super().__init__('vel_controller')
 
-        self.xacc = []
-        self.xrotvel = []
-        self.yacc = []
-        self.yrotvel = []
-        self.zacc = []
-        self.zrotvel = []
-        self.acc_time = []
+        
         self.bCalibrated = False
+        self.bHaveData = False
         self.calibration_time = 10 #seconds
-        #vPID
-        self.startingThrottle = .2
-        vP = .7 
-        vI = 0.03 
-        vD = 0.001 
-        self.vel_pid = PID(vP, vI, vD)
-        self.vel_pid.setSampleTime(self.SAMPLE_TIME)
-        self.vel_pid.setWindup(15)
-        #self.mThrottle = -10000
-        #seems to increase with velocity command rate
-        # 2 - 1 second commandnig/update
-        self.constant_theta_mult = 2*5 
-        self.total_theta = 0
-        #self.tracked_vel = 0
-
-        #angvelPID
-        avP = 10
-        avI = 1
-        avD = 1
-        self.angvel_pid = PID(avP, avI, avD)
-        self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
-        self.mSteering = 0
+        self.bCmdReceived = False 
+        bIMU = False
+        self.declare_parameter('bIMU', bIMU)
+        self.bIMU = self.get_parameter('bIMU').get_parameter_value().bool_value
+        #Helpful parameters!
+        velKp = 0
+        velKi = 0
+        velKd = 0
+        rotKp = 0
+        rotKi = 0
+        rotKd = 0
+        self.declare_parameter('velKp', velKp)
+        self.declare_parameter('velKi', velKi)
+        self.declare_parameter('velKd', velKd)
+        self.declare_parameter('rotKp', rotKp)
+        self.declare_parameter('rotKi', rotKi)
+        self.declare_parameter('rotKd', rotKd)
+        #Get parameters
+        velKp = self.get_parameter('velKp').get_parameter_value().double_value
+        velKi = self.get_parameter('velKi').get_parameter_value().double_value
+        velKd = self.get_parameter('velKd').get_parameter_value().double_value
+        rotKp = self.get_parameter('rotKp').get_parameter_value().double_value
+        rotKi = self.get_parameter('rotKi').get_parameter_value().double_value
+        rotKd = self.get_parameter('rotKd').get_parameter_value().double_value
 
 
         qos_profile = QoSProfile(
@@ -65,19 +65,46 @@ class velController(Node):
                 history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
                 depth=1
                 )
-
-        #Need a listener to get the velocity commands
-        self.vel_subscriber = self.create_subscription(Float32MultiArray,
-                                                        '/controller/vel',
-                                                        self.vel_listener, 
+        #Need a listener to get the commands
+        self.cmd_subscriber = self.create_subscription(Float32MultiArray,
+                                                        '/controller/cmd',
+                                                        self.cmd_listener, 
                                                         qos_profile=qos_profile)
         
-        #Subscribe to IMU
-        self.bHaveData = False
+        #Subscribe to IMU, IMU Parameters
+        self.xacc = []
+        self.xrotvel = []
+        self.yacc = []
+        self.yrotvel = []
+        self.zacc = []
+        self.zrotvel = []
+        self.acc_time = []
         self.imu_subscriber = self.create_subscription(Imu,
                                                        '/data_raw', 
                                                        self.imu_receiver,
                                                        1)
+        
+        qos_profile = QoSProfile(
+                reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+                history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
+                depth=1
+                )
+        self.time_arr = []
+        self.x_car = []
+        self.y_car = []
+        self.theta_world = []
+        self.prev_time = [] 
+        self.prev_tcar_ref = -1
+        self.pose_subscriber = self.create_subscription(PoseStamped,
+                                                        '/localization/pose',
+                                                        self.pose_receiver, 
+                                                        qos_profile=qos_profile)
+        self.waypoint_heading = -1
+        self.waypoint_subscriber = self.create_subscription(Float32,
+                                                        '/controller/waypoint_heading',
+                                                        self.waypoint_heading_receiver, 
+                                                        qos_profile=qos_profile)
+        
         #The be all publisher
         self.throttle_pub = self.create_publisher(
                  ServoCtrlMsg,
@@ -89,49 +116,171 @@ class velController(Node):
         self.gpio_client = self.create_client(
             ServoGPIOSrv, 
             '/servo_pkg/servo_gpio')
-        #while not self.gpio_client.wait_for_service(timeout_sec=1.0):
-        #    self.get_logger().info('Service not available...')
-
 
         self.start_time = -1
-        #Need a calibration for steady motion here
-        #basically read the data for 10s, create mean and std to establsih the noise
-        #floor
-        #Can then apply that to each measurement
-        
-        #IMU stuff:
-        #self.get_logger().info(f"Trying to initialize the sensor at {constants.BMI160_ADDR} on bus {constants.I2C_BUS_ID}")
+        if self.bIMU == True:
+            #vPID
+            vP = .7 
+            vI = 0.03 
+            vD = 0.001 
+            self.vel_pid = PID(vP, vI, vD)
+            self.vel_pid.setSampleTime(self.SAMPLE_TIME)
+            self.vel_pid.setWindup(15)
+            #seems to increase with velocity command rate
+            # 2 - 1 second commandnig/update
+            self.constant_theta_mult = 2*5 
+            self.total_theta = 0
+            #self.tracked_vel = 0
 
-        #Go turn on the GPIOO
+            #angvelPID
+            avP = 10
+            avI = 1
+            avD = 1
+            self.angvel_pid = PID(avP, avI, avD)
+            self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
+            self.mSteering = 0
+        else:
+            #vPID
+            self.prev_vel = 0
+            #force accept cmd
+            self.prev_increment = 1000
+            self.mThrottle = 0
+            vP = .5
+            vI = 0.0008
+            vD = 0.000 
+            self.vel_pid = PID(velKp, velKi, velKd)
+            self.vel_pid.setSampleTime(self.SAMPLE_TIME)
+            #seems to increase with velocity command rate
+            # 2 - 1 second commandnig/update
+            self.constant_theta_mult = 2*5 
+            self.total_theta = 0
+            #self.tracked_vel = 0
+
+            #angvelPID
+            avP = 2.0
+            avI = 0.005
+            avD = 0.000
+            self.angvel_pid = PID(rotKp, rotKi, rotKd)
+            self.angvel_pid.setSampleTime(self.SAMPLE_TIME)
+            self.mSteering = 0
+    def waypoint_heading_receiver(self, msg):
+        self.waypoint_heading = msg.data
+        self.get_logger().info('Waypoing: %.4f' % self.waypoint_heading)
+
+    def pose_receiver(self, msg):
+        if self.bIMU == False:
+            #I think for this following commetned block to work you'd have
+            #to not re-do the rotation as well and then keep track of how
+            #that change sin reference tothe origin's roation
+            #if any(self.origin) == False:
+                #if origin not defined then do so (note 
+                # the origin will be constantly redefined where it will
+                # always be the start of the way point. )
+
+
+
+            tcar_ref = msg.pose.position
+            tcar_ref = np.array([tcar_ref.x, tcar_ref.y, tcar_ref.z]) 
+            car_q = msg.pose.orientation
+            car_q = np.array([car_q.x, car_q.y, car_q.z, car_q.w])
+            #Convert to the rot obj
+            rcar = R.from_quat(car_q)
+            #Get out DCMs
+            Rref_car = rcar.as_matrix()
+
+            if self.bHaveData == True and self.waypoint_heading != -1:
+
+                dtime = (datetime.now() - self.prev_time).total_seconds()
+
+                deltat_car = np.matmul(Rref_car.transpose(), self.prev_tcar_ref - tcar_ref)
+                meas_vel_x_car = abs(deltat_car[0])/dtime
+
+                #compare self.prev_increment to what the speed change is detected as
+
+                #if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
+                #    self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
+                #        (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
+                if False:
+                    
+                #    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
+                #    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
+                    #bad command just decrease throttle in case moving too fast, to get to a place where we understand velocity again
+                    tmpmThrottle = -.1
+                    #This concept doesn't apply for steering as 0 is cruise, whereas throttle set speed is cruise
+                    #tmpmSteering = 0
+                else:
+                    if self.bCmdReceived == True:
+                        self.get_logger().info('Measured Velocity: <%.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, self.vel_pid.SetPoint))
+                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % 
+                                               (np.rad2deg(self.waypoint_heading), np.rad2deg(self.angvel_pid.SetPoint)))
+
+                        #Update the PID
+                        #vel_err = self.vel_pid.update(float(meas_vel_x_car))
+                        vel_err = self.vel_pid.update(float(meas_vel_x_car))
+                        #To make the correct mapping okay, have to add -1
+                        rot_err = self.angvel_pid.update(float(-1.0*self.waypoint_heading))
+                        self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
+
+            
+                        tmpmThrottle = self.vel_pid.output
+                        self.prev_increment = tmpmThrottle
+                        self.prev_vel = meas_vel_x_car
+                        self.mSteering = self.angvel_pid.output
+                        self.mThrottle = self.vel_pid.output
+                if self.bCmdReceived == True:
+                    if tmpmThrottle is not None:
+                        self.get_logger().info('Controller output, throttle inc %.4f, rotation %.4f' % (tmpmThrottle, self.mSteering))
+                        #self.mThrottle+=tmpmThrottle 
+                        servoMsg = ServoCtrlMsg()
+                        if self.mThrottle > 1.0:
+                            self.mThrottle = 1.0
+                        elif self.mThrottle < 0.0:
+                            #Assuming no backwards!
+                            self.mThrottle = float(0.0)
+                        
+                        if self.mSteering > 1.0:
+                            self.mSteering = 1.0
+                        elif self.mSteering < -1.0:
+                            self.mSteering = -1.0
+                        self.mSteering = self.mSteering * 1.0
+                        servoMsg.throttle = self.mThrottle
+                        self.get_logger().info('Setting throttle to %.4f and steering to %.4f' % (self.mThrottle, self.mSteering))
+                        servoMsg.angle = self.mSteering
+                        self.throttle_pub.publish(servoMsg)
+                else:
+                    self.get_logger().info('mThrottle is none')
+                self.prev_vel = meas_vel_x_car
+
+            #else:
+            #need to define prev items
+            self.prev_time = datetime.now()
+            self.bHaveData = True            
+            self.prev_tcar_ref = tcar_ref
+
+    def euler_from_quaternion(self, x, y, z, w):
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll_x = math.atan2(t0, t1)
         
+        t2 = +2.0 * (w * y - z * x)
+        t2 = +1.0 if t2 > +1.0 else t2
+        t2 = -1.0 if t2 < -1.0 else t2
+        pitch_y = math.asin(t2)
+        
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw_z = math.atan2(t3, t4)
+        
+        return roll_x, pitch_y, yaw_z # in radians
 
     def imu_receiver(self, msg):
-        #self.get_logger().info('IMU Message Received')
-        #First check if we're calibrated
-        #the acc is supposed to do this but it really didn't so...
-        if self.bCalibrated:
-            #Get accelerometer data
-            #save it to the accel array
-            #self.acc_time.append(msg.header.stamp)
-            dtime = datetime.now() - self.start_time
-            self.acc_time.append(dtime.total_seconds())
-            self.xacc.append(msg.linear_acceleration.x)
-            self.xrotvel.append(msg.angular_velocity.x)
-            self.yacc.append(msg.linear_acceleration.y)
-            self.yrotvel.append(msg.angular_velocity.y)
-            self.zacc.append(msg.linear_acceleration.z)
-            self.zrotvel.append(msg.angular_velocity.z)
-            self.bHaveData = True
-
-        else:
-            #Calibrate
-            if self.start_time == -1:
-                self.start_time = datetime.now()
-
-            duration = datetime.now() - self.start_time
-
-            if duration.total_seconds() < self.calibration_time:
-                #accumulate data
+        if self.bIMU == True:
+            #self.get_logger().info('IMU Message Received')
+            #First check if we're calibrated
+            #the acc is supposed to do this but it really didn't so...
+            if self.bCalibrated:
+                #Get accelerometer data
+                #save it to the accel array
                 #self.acc_time.append(msg.header.stamp)
                 dtime = datetime.now() - self.start_time
                 self.acc_time.append(dtime.total_seconds())
@@ -141,49 +290,70 @@ class velController(Node):
                 self.yrotvel.append(msg.angular_velocity.y)
                 self.zacc.append(msg.linear_acceleration.z)
                 self.zrotvel.append(msg.angular_velocity.z)
+                self.bHaveData = True
 
             else:
-                #do the calibration
-                np_xacc = np.array(self.xacc)
-                self.xacc_mean = np.mean(np_xacc)
-                self.xacc_std = np.std(np_xacc)
-                np_xrotvel = np.array(self.xrotvel)
-                self.xrotvel_mean = np.mean(np_xrotvel)
-                self.xrot_vel_std = np.std(np_xrotvel)
+                #Calibrate
+                if self.start_time == -1:
+                    self.start_time = datetime.now()
 
-                np_yacc = np.array(self.yacc)
-                self.yacc_mean = np.mean(np_yacc)
-                self.yacc_std = np.std(np_yacc)
-                np_yrotvel = np.array(self.yrotvel)
-                self.yrotvel_mean = np.mean(np_yrotvel)
-                self.yrotvel_std = np.std(np_yrotvel)
+                duration = datetime.now() - self.start_time
 
-                np_zacc = np.array(self.zacc)
-                self.zacc_mean = np.mean(np_zacc)
-                self.zacc_std = np.std(np_zacc)
-                np_zrotvel = np.array(self.zrotvel)
-                self.zrotvel_mean = np.mean(np_zrotvel)
-                self.zrotvel_std = np.std(np_zrotvel)
+                if duration.total_seconds() < self.calibration_time:
+                    #accumulate data
+                    #self.acc_time.append(msg.header.stamp)
+                    dtime = datetime.now() - self.start_time
+                    self.acc_time.append(dtime.total_seconds())
+                    self.xacc.append(msg.linear_acceleration.x)
+                    self.xrotvel.append(msg.angular_velocity.x)
+                    self.yacc.append(msg.linear_acceleration.y)
+                    self.yrotvel.append(msg.angular_velocity.y)
+                    self.zacc.append(msg.linear_acceleration.z)
+                    self.zrotvel.append(msg.angular_velocity.z)
 
-                self.xacc = []
-                self.xrotvel = []
-                self.yacc = []
-                self.yrotvel = []
-                self.zacc = []
-                self.zrotvel = []
-                self.acc_time = []
-                self.bCalibrated = True
-                self.bHaveData = False
-                self.start_time = datetime.now()
+                else:
+                    #do the calibration
+                    np_xacc = np.array(self.xacc)
+                    self.xacc_mean = np.mean(np_xacc)
+                    self.xacc_std = np.std(np_xacc)
+                    np_xrotvel = np.array(self.xrotvel)
+                    self.xrotvel_mean = np.mean(np_xrotvel)
+                    self.xrot_vel_std = np.std(np_xrotvel)
+
+                    np_yacc = np.array(self.yacc)
+                    self.yacc_mean = np.mean(np_yacc)
+                    self.yacc_std = np.std(np_yacc)
+                    np_yrotvel = np.array(self.yrotvel)
+                    self.yrotvel_mean = np.mean(np_yrotvel)
+                    self.yrotvel_std = np.std(np_yrotvel)
+
+                    np_zacc = np.array(self.zacc)
+                    self.zacc_mean = np.mean(np_zacc)
+                    self.zacc_std = np.std(np_zacc)
+                    np_zrotvel = np.array(self.zrotvel)
+                    self.zrotvel_mean = np.mean(np_zrotvel)
+                    self.zrotvel_std = np.std(np_zrotvel)
+
+                    self.xacc = []
+                    self.xrotvel = []
+                    self.yacc = []
+                    self.yrotvel = []
+                    self.zacc = []
+                    self.zrotvel = []
+                    self.acc_time = []
+                    self.bCalibrated = True
+                    self.bHaveData = False
+                    self.start_time = datetime.now()
 
 
-    def vel_listener(self, msg):
-        #self.get_logger.info('Velocity Command Received: <%.4f %.4f %.4f>' % (msg.x, msg.y, msg.z))
+    def cmd_listener(self, msg):
+        
         self.get_logger().info('Incoming Command Received: <%.4f> AND <%.4f>' % (msg.data[0], msg.data[1]))
-
+        self.bCmdReceived = True
+        #I suppose + rotation is left and - is right
         
         #duration = datetime.now() - self.start_time 
-        if self.bCalibrated == True and self.bHaveData == True:
+        if self.bIMU == True and self.bCalibrated == True and self.bHaveData == True:
             #ideally specified in the body frame of the car, so X = forward?
             #need to verify with IMU output to make sure...
             #cmd_vel_x = msg.x
@@ -191,7 +361,6 @@ class velController(Node):
             #cmd_vel_z = msg.z
 
             cmd_vel = float(msg.data[0])
-
             if abs(cmd_vel) > 0 and self.bGPIOEnable == False:
                 self.bGPIOEnable = True
                 self.enable_gpio()
@@ -199,7 +368,6 @@ class velController(Node):
             if cmd_vel == 0:
                 self.bGPIOEnable = False
                 self.disable_gpio()
-
             cmd_angle = float(msg.data[1])
 
             self.vel_pid.SetPoint = cmd_vel
@@ -312,7 +480,21 @@ class velController(Node):
             self.bHaveData = False
             #self.start_time = datetime.now()
 
+        elif self.bHaveData == True and self.bIMU == False:
+            
+            #Get commands and hit the set-points
+            cmd_vel = float(msg.data[0])
+            if abs(cmd_vel) > 0 and self.bGPIOEnable == False:
+                self.bGPIOEnable = True
+                self.enable_gpio()
+            
+            if cmd_vel == 0:
+                self.bGPIOEnable = False
+                self.disable_gpio()
+            cmd_angle = float(msg.data[1])
 
+            self.vel_pid.SetPoint = cmd_vel
+            self.angvel_pid.SetPoint = cmd_angle
 
         else:
             self.get_logger().info('Incoming Command Ignored')
