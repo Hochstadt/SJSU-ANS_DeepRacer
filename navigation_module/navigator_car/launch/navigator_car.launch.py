@@ -13,6 +13,7 @@ def generate_launch_description():
         executable='navigator_car'
         )
     
+    
     localization = Node(
         package='localization',
         executable='localization',
@@ -66,8 +67,8 @@ def generate_launch_description():
         executable='vel_controller',
         parameters=[{
                 'bIMU': bIMU,
-                'velKp': 2.7,
-                'velKi': 0.030,
+                'velKp': 2.3,
+                'velKi': 0.010,
                 'velKd': 0.001,
                 'rotKp': 0.7,
                 'rotKi': 0.001,
@@ -84,6 +85,10 @@ def generate_launch_description():
         package='imu_pkg',
         executable='imu_node'
     )
+    cam_streamer = Node(
+        package='camera_streamer',
+        executable='camera_streamer'
+    )
 
     if bIMU == True:
         return LaunchDescription([
@@ -93,7 +98,8 @@ def generate_launch_description():
             lidar_scan_acq,
             vel_controller,
             servo_pkg,
-            imu_pkg
+            imu_pkg,
+            cam_streamer
         ])
     else:
         return LaunchDescription([
@@ -103,4 +109,5 @@ def generate_launch_description():
             lidar_scan_acq,
             vel_controller,
             servo_pkg,
+            cam_streamer
         ])

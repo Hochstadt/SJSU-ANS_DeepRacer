@@ -85,7 +85,7 @@ class cameraStreamer(Node):
             self.videoWorker.start()
 
         def streamFrames(self):
-            while self.bCollectData:
+            while True:
                 #Don't need stereo imagery... just the one
                 mono_cap = self.video_capture_list[0]
                 if mono_cap.isOpened():
@@ -98,7 +98,6 @@ class cameraStreamer(Node):
                             msg = self.bridge.cv2_to_imgmsg(frame, "bgr8")
                         except CvBridge.CvBridgeError as e:
                             self.get_logger().error('Cv bridge exception %s' % e)
-                            self.bCollectData = False
                         #Now attempt to actually publish                    
                         self.streamer.publish(msg)    
                 else:
