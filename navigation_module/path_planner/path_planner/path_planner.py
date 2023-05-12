@@ -139,20 +139,20 @@ class Path_Planner(Node):
         # Initialize Goal State Pose
         
         self.goalState = State.from_pose(goalMsg.pose)
-        self.get_logger().info("Temporarily overriding the goal state for testing")
-        tmpGoal = Pose()
-        tmpGoal.position.x = 3.9345617294311523
-        tmpGoal.position.y = 9.877911567687988
-        tmpGoal.position.z = 0.0
-        tmpGoal.orientation.x = 0.0
-        tmpGoal.orientation.y = 0.0
-        tmpGoal.orientation.z = 0.7506414881630668
-        tmpGoal.orientation.w = 0.6607097367591434
+        #self.get_logger().info("Temporarily overriding the goal state for testing")
+        #tmpGoal = Pose()
+        #tmpGoal.position.x = 3.9345617294311523
+        #tmpGoal.position.y = 9.877911567687988
+        #tmpGoal.position.z = 0.0
+        #tmpGoal.orientation.x = 0.0
+        ##tmpGoal.orientation.y = 0.0
+        #tmpGoal.orientation.z = 0.7506414881630668
+        #tmpGoal.orientation.w = 0.6607097367591434
         
-        self.get_logger().info("Goal state: <%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f>" % 
-                               (tmpGoal.position.x, tmpGoal.position.y, tmpGoal.position.z,
-                                tmpGoal.orienation.x,tmpGoal.orientation.y,tmpGoal.orientation.z, tmpGoal.orientation.w))
-        self.goalState = tmpGoal
+        #self.get_logger().info("Goal state: <%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f>" % 
+        #                       (tmpGoal.position.x, tmpGoal.position.y, tmpGoal.position.z,
+        #                        tmpGoal.orientation.x,tmpGoal.orientation.y,tmpGoal.orientation.z, tmpGoal.orientation.w))
+        #self.goalState = State.from_pose(tmpGoal)
         # Set waitForPlan flag to true
         self.waitForPlan = True
         self.goalReady   = True
