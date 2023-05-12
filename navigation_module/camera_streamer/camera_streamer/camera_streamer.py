@@ -32,7 +32,7 @@ class cameraStreamer(Node):
             
             self.video_capture_list = []
             self.video_index_list = []
-            self.scanCameraIndex(self.CAMERA_IDX_LIST)
+            
             self.bridge = CvBridge()
             self.videoWorker = threading.Thread()
             
@@ -42,36 +42,9 @@ class cameraStreamer(Node):
                  'display_mjpeg',
                  1
             )
-
-
-            #Create a subsriber that keys off the same message the 
-            #cameras do
-            self.activate_srv = self.create_service(VideoStateSrv,
-                'activate_data_collection',
-                self.activate_callback)
-
             
+            self.scanCameraIndex(self.CAMERA_IDX_LIST)
 
-        def activate_callback(self, request, response):
-            if request.activate_video == 1:
-                self.get_logger().info('Starting data collection')
-                self.bCollectData = True
-                
-                #Check we are collecting from mjpg
-                i = 0
-                for cap in self.video_capture_list:
-                    if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FOURCC) == cv.VideoWriter.fourcc(*"MJPG")):
-                        self.get_logger().error('Unable to get MJPEG stream: %d' % self.video_index_list[i])
-                    i = i + 1
-                self.videoWorker = threading.Thread(target=self.streamFrames, daemon=True)
-                self.videoWorker.start()
-                
-                response.error = 0
-            else:
-                self.get_logger().info('Cannot read camera')
-                response.error = 0
-
-            return response
 
 
         def scanCameraIndex(self, camera_idx_list):
@@ -100,6 +73,16 @@ class cameraStreamer(Node):
                 self.get_logger().info('Stereo cameras detected at indexes: %d, %d' % (self.video_index_list[0], self.video_index_list[1]))
             else:
                 self.get_logger().error('Error while detecting cameras')
+
+            #Now start the video 
+            #Check we are collecting from mjpg
+            i = 0
+            for cap in self.video_capture_list:
+                if not (cap.isOpened()) or not (cap.get(cv.CAP_PROP_FOURCC) == cv.VideoWriter.fourcc(*"MJPG")):
+                    self.get_logger().error('Unable to get MJPEG stream: %d' % self.video_index_list[i])
+                i = i + 1
+            self.videoWorker = threading.Thread(target=self.streamFrames, daemon=True)
+            self.videoWorker.start()
 
         def streamFrames(self):
             while self.bCollectData:
