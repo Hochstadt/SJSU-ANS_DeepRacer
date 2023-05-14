@@ -33,6 +33,7 @@ class navigatorCar(Node):
         self.noise_time = 2
         self.avg_vel = .3 
         self.path_index = -1
+        self.waypoint_missed_count = 0
 
 
 
@@ -139,6 +140,7 @@ class navigatorCar(Node):
             #If you miss the rotation, hopefully it's not that bad.... but you can't really do a complete 180 in place or wahtever
             if abs(dx) < self.x_limit and abs(dy) < self.y_limit:# and abs(dtheta) < self.theta_limit:
                 self.get_logger().info('HOOOOOOORAY!   Achieved Waypoint with the following stats')
+                self.waypoint_missed_count = 0
                 
                 #if self.path_index >= len(self.path.poses):
                 if self.path_index < 0:
@@ -149,18 +151,26 @@ class navigatorCar(Node):
                     self.next_pose = self.path.poses[self.path_index].pose
                     self.next_spose = self.path.poses[self.path_index]
                     self.path_index-=1
+            
+                if self.path_index == 0:
+                    #This should be the last point, so refine it
+                    self.x_limit = .05
+                    self.y_limit = .05
             #elif abs(np.rad2deg(waypoint_heading)) > 90:
             elif adj_length <= 0:
-                #This is the indicator we missed it... so move on and forget
-                self.get_logger().info('BOOOOOO Waypoing missed')
+                #This is the indicator we missed it... so move on and forget unless
+                #we have been doing bad, then we should try still...
+                self.get_logger().info('BOOOOOO Waypoint missed')
+                self.waypoint_missed_count+=1
                 #if self.path_index >= len(self.path.poses):
                 if self.path_index < 0:
                     self.avg_vel = 0.0
                     self.get_logger().info('Out of poses, sort of at the end')
                 else:
-                    self.next_pose = self.path.poses[self.path_index].pose
-                    self.next_spose = self.path.poses[self.path_index]
-                    self.path_index-=1
+                    if self.waypoint_missed_count < 8:
+                        self.next_pose = self.path.poses[self.path_index].pose
+                        self.next_spose = self.path.poses[self.path_index]
+                        self.path_index-=1
         
 
             #update the command            
@@ -230,8 +240,8 @@ class navigatorCar(Node):
 
             #Hand-tuned noise values
             self.theta_limit = np.deg2rad(15)
-            self.x_limit = .1
-            self.y_limit = .1
+            self.x_limit = .3
+            self.y_limit = .3
             self.get_logger().info('Bounds as <%.4f, %.4f> %.4f deg' % (self.x_limit, self.y_limit, np.rad2deg(self.theta_limit)))
             self.next_pose = self.path.poses[self.path_index].pose
             self.next_spose = self.path.poses[self.path_index]

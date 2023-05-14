@@ -16,7 +16,7 @@ from deepracer_interfaces_pkg.msg import ServoCtrlMsg
 from deepracer_interfaces_pkg.srv import ServoGPIOSrv
 
 
-
+from time import sleep
 from datetime import datetime
 import numpy as np
 import math
@@ -507,6 +507,7 @@ class velController(Node):
         self.gpio_client.call_async(gpio_request) 
         #rclpy.spin_until_future_complete(gpio_request, future)
         self.get_logger().info('GPIO Enabled')
+        sleep(5)
 
     def disable_gpio(self):
         self.get_logger().info('Trying to disable gpio')
