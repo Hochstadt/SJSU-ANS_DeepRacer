@@ -27,6 +27,7 @@ from scipy.spatial.transform import Rotation as R
 
 class velController(Node):
     SAMPLE_TIME =.1 
+    THROTTLE_FLOOR = 0.4
     def __init__(self):
         super().__init__('vel_controller')
 
@@ -234,9 +235,9 @@ class velController(Node):
                         servoMsg = ServoCtrlMsg()
                         if self.mThrottle > 1.0:
                             self.mThrottle = 1.0
-                        elif self.mThrottle < 0.0:
+                        elif self.mThrottle < self.THROTTLE_FLOOR:
                             #Assuming no backwards!
-                            self.mThrottle = float(0.0)
+                            self.mThrottle = float(self.THROTTLE_FLOOR)
                         
                         if self.mSteering > 1.0:
                             self.mSteering = 1.0
