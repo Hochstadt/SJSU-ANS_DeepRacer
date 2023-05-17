@@ -190,7 +190,7 @@ class velController(Node):
             Rref_car = rcar.as_matrix()
             dtime = (datetime.now() - self.prev_time).total_seconds()
 
-            if self.bHaveData == True and self.waypoint_heading != -1 and dtime > 1:
+            if self.bHaveData == True and self.waypoint_heading != -1 and dtime > 0.3:
                 
                 self.bHaveData = False
                 
