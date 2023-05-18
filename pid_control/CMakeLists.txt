@@ -19,6 +19,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(deepracer_interfaces_pkg REQUIRED)
+find_package(nav_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -27,7 +28,7 @@ find_package(deepracer_interfaces_pkg REQUIRED)
 
 add_executable(pid_control src/pid_control.cpp)
 
-ament_target_dependencies(pid_control rclcpp geometry_msgs deepracer_interfaces_pkg)
+ament_target_dependencies(pid_control rclcpp geometry_msgs deepracer_interfaces_pkg nav_msgs)
 target_include_directories(pid_control PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
