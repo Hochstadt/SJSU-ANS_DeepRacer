@@ -1,4 +1,4 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
 #Not super necessary for now
 #Check if user wants to remove current build stuff to do a re-build
 #if [ "$1" = "rebuild" ]
@@ -15,6 +15,7 @@
 CUR_PATH=`pwd`
 DEP_PATH="$CUR_PATH/deepracer_deps"
 INF_PATH="$DEP_PATH/aws-deepracer-interfaces-pkg"
+ANS_INTERFACES_PATH="$CUR_PATH/ans_interfaces"
 bError=0
 bLC=1
 
@@ -31,7 +32,7 @@ export ROS_DOMAIN_ID=22
 #NO matter what car vs. host cpu we need the following
 ##INterfaces
 if [ ! -d $DEP_PATH ]
-then 
+then
   mkdir $DEP_PATH
 fi
 cd $DEP_PATH
@@ -44,11 +45,11 @@ then
   then
     git clone git@github.com:aws-deepracer/aws-deepracer-interfaces-pkg.git
   fi
-  
+
   #Go check dependencies and do build
-  cd $INF_PATH && rosdep install -i --from-path . --rosdistro foxy -y 
+  cd $INF_PATH && rosdep install -i --from-path . --rosdistro foxy -y
   #Go build the thing
-  cd $INF_PATH && colcon build --packages-select deepracer_interfaces_pkg 
+  cd $INF_PATH && colcon build --packages-select deepracer_interfaces_pkg
 fi
 source $INF_PATH/install/local_setup.bash
 export CMAKE_PREFIX_PATH="$INF_PATH/install"
@@ -98,6 +99,19 @@ else
 fi
 source $COMMON_INF_PATH/install/setup.bash
 
+cd $DEP_PATH
+# ans_interfaces
+########################################################################3
+#Check if built
+if [ ! -d "$ANS_INTERFACES_PATH/build" ]
+then
+
+  echo "Building ans_interfaces"
+  cd $ANS_INTERFACES_PATH && colcon build
+else
+  echo "ans_interfaces already exists and is built"
+fi
+source $ANS_INTERFACES_PATH/install/setup.bash
 
 cd $DEP_PATH
 # ros2numpy
@@ -136,9 +150,10 @@ then
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
+  AWS_DEEPRACER_NAV="$DEP_PATH/aws-deepracer"
   ROS_NUMPY="$DEP_PATH/ros2_numpy"
 
-  #Paths for custom packages 
+  #Paths for custom packages
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
   PID_CONTROL_PATH="$CUR_PATH/pid_control"
   DATA_COL_PATH="$CUR_PATH/data_collector"
@@ -156,7 +171,7 @@ then
   then
     #Check if already cloned
     if [ ! -d $CAM_PATH ]
-    then 
+    then
       echo "Cloning deepracer camera package"
       git clone git@github.com:aws-deepracer/aws-deepracer-camera-pkg.git
     fi
@@ -192,8 +207,31 @@ then
 
   cd $DEP_PATH
 
-  
-  # rplidar 
+
+  # AWS DeepRacer ROS Navigation Stack
+  # -- Need cmdvel_to_servo_pkg for joystick control
+  #############################################################
+  #Check if built
+  if [ ! -d "$AWS_DEEPRACER_NAV/build" ]
+  then
+    #Check if cloned
+    if [ ! -d $AWS_DEEPRACER_NAV ]
+    then
+      echo "AWS DeepRacer Navigation Stack repo"
+      git clone https://github.com/aws-deepracer/aws-deepracer.git
+      # Replace  constants.ACTION_PUBLISH_TOPIC  with  'ctrl_pkg/servo_msg'
+      sed -i "s/constants.ACTION_PUBLISH_TOPIC/'\/ctrl_pkg\/servo_msg'/" aws-deepracer/deepracer_nodes/cmdvel_to_servo_pkg/cmdvel_to_servo_pkg/cmdvel_to_servo_node.py
+    fi
+    echo "Building cmdvel_to_servo_pkg package"
+    cd $AWS_DEEPRACER_NAV && colcon build --packages-select cmdvel_to_servo_pkg
+  else
+    echo "cmdvel_to_servo_pkg package already exists and is built"
+  fi
+  source $AWS_DEEPRACER_NAV/install/local_setup.bash
+
+  cd $DEP_PATH
+
+  # rplidar
   #############################################################
   #Check if built
   if [ ! -d "$LIDAR_PATH/build" ]
@@ -211,7 +249,7 @@ then
   fi
   source $LIDAR_PATH/install/local_setup.bash
 
-  
+
   cd $DEP_PATH
   #Add additional dependencies here
 
@@ -226,10 +264,35 @@ then
     source /opt/aws/deepracer/lib/servo_pkg/share/servo_pkg/local_setup.bash
     #source any other aws related stuff here
   else
-    echo "Error: Did not detect AWS installations. Are you are on the correct system (ie. not the host)?" 
+    echo "Error: Did not detect AWS installations. Are you are on the correct system (ie. not the host)?"
     bError=1
   fi
- 
+
+  #IMU PKG
+  ###########################################################3
+  if [ $bLC != 0 ]
+    then
+    cd $DEP_PATH
+    if [ ! -d "$IMU_PKG/build" ]
+    then
+      #Check if cloned
+      if [ ! -d $IMU_PKG ]
+      then
+        echo "Cloning IMU PKG"
+        git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git
+      fi
+      echo "BUilding imu package"
+      echo "-------------------------------------------------"
+      echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
+      echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
+      cd $IMU_PKG && colcon build
+    else
+      echo "IMU package already exists and is built"
+    fi
+    source $IMU_PKG/install/local_setup.bash
+  fi
+
+
   #ssh_driver pkg
   ##########################################################
   cd $CUR_PATH
@@ -270,7 +333,7 @@ then
     echo "sourcing localizer"
     source $LOCALIZER_PATH/install/setup.bash
   fi
-    
+
   #lidar_scan_acq
   #################################################################
   cd $CUR_PATH
@@ -304,7 +367,7 @@ then
 
   #udp_sender pkg
   ##########################################################
-  if [ $bLC != 1 ] 
+  if [ $bLC != 1 ]
   then
     cd $CUR_PATH
     if [ $bError != 1 ]
@@ -316,7 +379,7 @@ then
       fi
       echo "sourcing controller"
       source $PID_CONTROL_PATH/install/setup.bash
-    fi 
+    fi
   fi
   
   #navigator car
@@ -356,9 +419,9 @@ then
   #Paths
   SSH_CONTROLLER_PATH="$CUR_PATH/ssh_controller"
   RVIZ_INF="$CUR_PATH/rviz_interface"
-  MAP_LOADER="$CUR_PATH/navigation_module/map_loader"
   ANS_SERVER="$CUR_PATH/navigation_module/ans_server"
   ANS_MSGS="$CUR_PATH/navigation_module/ans_msgs"
+  ANS_GUI_PATH="$CUR_PATH/ans_gui"
   NAVIGATOR_HOST="$CUR_PATH/navigation_module/navigator_host"
   PATH_PLANNER="$CUR_PATH/navigation_module/path_planner"
 
@@ -384,7 +447,18 @@ then
   fi
   source $SSH_CONTROLLER_PATH/install/local_setup.bash
 
+  # ANS GUI
+  if [ ! -d "$ANS_GUI_PATH/build" ]
+  then
+    echo "building ans_gui"
+    cd $ANS_GUI_PATH && colcon build
+  else
+    echo "ans_gui already built"
+  fi
+  source $ANS_GUI_PATH/install/local_setup.bash
+
   cd $CUR_PATH
+
   #ans_msgs
   ####################################################
   if [ ! -d "$ANS_MSGS/build" ]
@@ -425,7 +499,7 @@ then
 
   #navigator_host
   ##########################################33
-    
+
   cd $CUR_PATH
   if [ ! -d "$NAVIGATOR_HOST/build" ]
   then
@@ -435,9 +509,6 @@ then
     echo "navigator host already built"
   fi
   source $NAVIGATOR_HOST/install/setup.bash
-
-  
-  
 
 else
   echo "'$1' is not an understood argument, try one of the following"

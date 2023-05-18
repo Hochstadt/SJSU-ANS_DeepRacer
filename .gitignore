@@ -1,0 +1,7 @@
+# Ignore directories produced from colcon
+build/
+install/
+log/
+
+# Ignore deepracer_deps pulled by sourceme.sh script
+/deepracer_deps/

@@ -1,13 +1,11 @@
-An Indoor Autonomous Navigation System Implementation using AWS DeepRacer  
+An Indoor Autonomous Navigation System Implementation using AWS DeepRacer
 
 **SJSU / LM Cohort 2023 Master's Project -- Group 4**
-
-
 
 # To setup ssh_driver/controller:
 ## On the car/deepracer, ssh_driver:
 0. To get to the car you can do a number of things, like directly
-logging in (through monitor/keyboard/mouse), vncserver setup like 
+logging in (through monitor/keyboard/mouse), vncserver setup like
 nomachine, or ssh. The best way to operate is using ssh only as the processor
 of the deepracer is tiny and opening a vncserver significantly delays the
 image streaming. Additionally, a monitor/keyboard/mouse direct setup
@@ -63,14 +61,14 @@ sudo apt-get update
 
 sudo apt-install xterm
 ```
-1. In a fresh new terminal (without any prior environment variables set) clone this repo: 
+1. In a fresh new terminal (without any prior environment variables set) clone this repo:
 
 ```
 >>git clone git@github.com:Hochstadt/SJSU-ANS_DeepRacer.git
 >>cd SJSU-ANS_DeepRacer && git checkout ssh_driver
 ```
 
-2. Now source the sourceme script with the host argument by running the following script. 
+2. Now source the sourceme script with the host argument by running the following script.
 (You should be in the directory named SJSU-ANS_DeepRacer)
 
 ```>>source setup/sourceme.sh host ```
@@ -96,7 +94,7 @@ as sudo).
 ```ros2 launch ssh_controller ssh_controller.launch.py```
 
 6. This will launch a variety of nodes, the first thing you'll notice is
-an X-term window where you can actually controller the deepracer. 
+an X-term window where you can actually controller the deepracer.
 
 To go forward:
 - put the car in 'drive' by pressing 't'. This allows for commands to be registered
@@ -118,7 +116,7 @@ registered for moving backwards
 - The steering is the same, 'j' for left and 'l' for right
 - To increase the amount/speed/throttle of reverse repeatedly press ','
 - To decrease the amount/speed/throttle of reverse repeatedly press 'i'
-- To stop press the 'k' key, this will take it out of reverse 
+- To stop press the 'k' key, this will take it out of reverse
 
 An important note, in /opt/aws/deepracer there is a calibration.json. The parameters
 underneath motor control the PWM that goes to impact the motor. For my configuration
@@ -149,15 +147,35 @@ the packages.
 9. (On host) In the xterm window use i,jlk to control vehicle
 
 When you started the ssh_controller after the ssh_driver was already launched data_collection would have already started. The location of
-the data collection is set within the launch file of the ssh_driver. To change it, it is at the top of ssh_driver/launch/launch.py. When the 
+the data collection is set within the launch file of the ssh_driver. To change it, it is at the top of ssh_driver/launch/launch.py. When the
 data collection is complete you can view the data on the car. To get it off, you can run the bash script in data_collector, and make sure you
 are running from the root directory. Run as follows:
 ```
 >>data_collector/retrieve_data.sh 192.168.1.26 /media/storage/good_collect
 ```
 Where the first argument is the IP address of the deepracer and the second argument is the data location ont the deepracer. This will scp the
-data you want to a data directory in the root folder and then convert the pc2 to numpy arrays as well as create a video. This is done so that 
+data you want to a data directory in the root folder and then convert the pc2 to numpy arrays as well as create a video. This is done so that
 as much processing is moved to the host comptuer as possible.
+
+# To setup the ANS GUI...
+Follow the process above to setup the `ssh_driver` which the GUI needs to interface with. Similar to the `ssh_controller`, `setup/sourceme.sh host` will be used to build and setup the ANS GUI
+### Run SSH driver on the car
+1. Set CWD to the `SJSU-ANS_DeepRacer` directory
+2. `source setup/sourceme.sh car`
+3. `ros2 launch ssh_driver ssh_launcher.launch.py
+
+### Run the ANS GUI on the host
+1. Set CWD to the `SJSU-ANS_DeepRacer` directory
+2. `source setup/sourceme.sh host`
+3. `ros2 run ans_gui_pkg ans_gui
+
+### Run the cmdvel_to-servo_node package
+1. Set the CWD to the `SJSU-ANS_DeepRacer` directory
+2. `source setup/sourceme.sh car`
+3. `ros2 launch cmdvel_to_servo_pkg cmdvel_to_servo_pkg_launch.py`
+
+** Note ** - I had to Stop the deepracer-core.service else my ROS communication would not work
+`scripts/init_stop_core_services.sh`
 
 # Post-data Collection
 To run the required things for data collection from the main folder SJSU-ANS_etc, run
