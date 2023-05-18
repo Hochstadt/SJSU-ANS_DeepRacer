@@ -136,7 +136,7 @@ then
   LIDAR_PATH="$DEP_PATH/rplidar_ros"
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
-  
+  ROS_NUMPY="$DEP_PATH/ros2_numpy"
 
   #Paths for custom packages 
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
@@ -180,6 +180,8 @@ then
       fi
       echo "Changing device address to possible new standard"
       sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
+      echo "Changing rate to 100"
+      sed -i 's/60/100/' $IMU_PATH/config/imu_params.yam
       echo "Building imu package"
       cd $IMU_PATH && colcon build
     else
@@ -228,32 +230,6 @@ then
     bError=1
   fi
  
-  #IMU PKG
-  ###########################################################3
-  if [ $bLC != 0 ]
-    then
-    cd $DEP_PATH
-    if [ ! -d "$IMU_PKG/build" ]
-    then
-      #Check if cloned
-      if [ ! -d $IMU_PKG ]
-      then
-        echo "Cloning IMU PKG"
-        git clone git@github.com:taylormaurer4323/larsll-deepracer-imu-pkg.git 
-      fi
-      echo "BUilding imu package"
-      echo "-------------------------------------------------"
-      echo "WARNING: FOR THE PACKAGE TO BUILD CORRECTLY YOU NEED TO INSTALL BMI160-i2c and smbus2"
-      echo "TO DO SO - RUN 'pip install BMI160-i2c smbus2'"
-      cd $IMU_PKG && colcon build
-    else
-      echo "IMU package already exists and is built"
-    fi
-    source $IMU_PKG/install/local_setup.bash
-  fi
-
-    
-
   #ssh_driver pkg
   ##########################################################
   cd $CUR_PATH
