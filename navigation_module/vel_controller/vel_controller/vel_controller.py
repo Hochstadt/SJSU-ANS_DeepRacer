@@ -16,7 +16,7 @@ from deepracer_interfaces_pkg.msg import ServoCtrlMsg
 from deepracer_interfaces_pkg.srv import ServoGPIOSrv
 
 
-
+from time import sleep
 from datetime import datetime
 import numpy as np
 import math
@@ -26,7 +26,8 @@ from scipy.spatial.transform import Rotation as R
 
 
 class velController(Node):
-    SAMPLE_TIME =.1 
+    SAMPLE_TIME =.01 
+    THROTTLE_FLOOR = 0.7
     def __init__(self):
         super().__init__('vel_controller')
 
@@ -187,55 +188,50 @@ class velController(Node):
             rcar = R.from_quat(car_q)
             #Get out DCMs
             Rref_car = rcar.as_matrix()
-
-            if self.bHaveData == True and self.waypoint_heading != -1:
-
+            if self.bHaveData == True:
                 dtime = (datetime.now() - self.prev_time).total_seconds()
 
+            if self.bHaveData == True and self.waypoint_heading != -1 and dtime > 0.1:
+                
+                self.bHaveData = False
+                
+
                 deltat_car = np.matmul(Rref_car.transpose(), self.prev_tcar_ref - tcar_ref)
+
                 meas_vel_x_car = abs(deltat_car[0])/dtime
+
 
                 #compare self.prev_increment to what the speed change is detected as
 
-                #if abs(meas_vel_x_car - self.prev_vel) > 3 * abs(self.prev_increment):
-                #    self.get_logger().info('Command rejected as delta vel is %.4f and current increment is # * %.4f' %
-                #        (abs(meas_vel_x_car - self.prev_vel), self.prev_increment))
-                if False:
-                    
-                #    self.get_logger().info('Measured Velocity: <%.4f, %.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, meas_vel_y_car, self.vel_pid.SetPoint))
-                #    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % (np.rad2deg(meas_theta_world), np.rad2deg(self.angvel_pid.SetPoint)))
-                    #bad command just decrease throttle in case moving too fast, to get to a place where we understand velocity again
-                    tmpmThrottle = -.1
-                    #This concept doesn't apply for steering as 0 is cruise, whereas throttle set speed is cruise
-                    #tmpmSteering = 0
-                else:
-                    if self.bCmdReceived == True:
-                        self.get_logger().info('Measured Velocity: <%.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, self.vel_pid.SetPoint))
-                        self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % 
-                                               (np.rad2deg(self.waypoint_heading), np.rad2deg(self.angvel_pid.SetPoint)))
+                if self.bCmdReceived == True:
+                    self.get_logger().info('Delta Time: <%.4f> ' % dtime)
+                    self.get_logger().info('Measured Velocity: <%.4f>, Commanded Velocity <%.4f>' % (meas_vel_x_car, self.vel_pid.SetPoint))
+                    self.get_logger().info('Measured Rotation: <%.4f>, Commanded Rotation <%.4f>' % 
+                                            (np.rad2deg(self.waypoint_heading), np.rad2deg(self.angvel_pid.SetPoint)))
 
-                        #Update the PID
-                        #vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                        vel_err = self.vel_pid.update(float(meas_vel_x_car))
-                        #To make the correct mapping okay, have to add -1
-                        rot_err = self.angvel_pid.update(float(-1.0*self.waypoint_heading))
-                        self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
+                    #Update the PID
+                    vel_err = self.vel_pid.update(float(meas_vel_x_car))
+                    #To make the correct mapping okay, have to add -1
+                    rot_err = self.angvel_pid.update(float(-1.0*self.waypoint_heading))
+                    self.get_logger().info('Velocity error <%.4f>, Rotation error <%.4f>' % (vel_err, np.rad2deg(rot_err)))
 
-            
-                        tmpmThrottle = self.vel_pid.output
-                        self.prev_increment = tmpmThrottle
-                        self.prev_vel = meas_vel_x_car
-                        self.mSteering = self.angvel_pid.output
-                        self.mThrottle = self.vel_pid.output
+        
+                    tmpmThrottle = self.vel_pid.output
+                    self.prev_increment = tmpmThrottle
+                    self.prev_vel = meas_vel_x_car
+                    self.mSteering = self.angvel_pid.output
+                    self.mThrottle = self.vel_pid.output
                 if self.bCmdReceived == True:
                     if tmpmThrottle is not None:
                         self.get_logger().info('Controller output, throttle inc %.4f, rotation %.4f' % (tmpmThrottle, self.mSteering))
                         #self.mThrottle+=tmpmThrottle 
                         servoMsg = ServoCtrlMsg()
+                        self.mThrottle = self.mThrottle + self.THROTTLE_FLOOR
                         if self.mThrottle > 1.0:
                             self.mThrottle = 1.0
                         elif self.mThrottle < 0.0:
                             #Assuming no backwards!
+                            #self.mThrottle = float(self.THROTTLE_FLOOR)
                             self.mThrottle = float(0.0)
                         
                         if self.mSteering > 1.0:
@@ -253,9 +249,10 @@ class velController(Node):
 
             #else:
             #need to define prev items
-            self.prev_time = datetime.now()
-            self.bHaveData = True            
-            self.prev_tcar_ref = tcar_ref
+            if self.bHaveData == False:
+                self.prev_time = datetime.now()
+                self.bHaveData = True            
+                self.prev_tcar_ref = tcar_ref
 
     def euler_from_quaternion(self, x, y, z, w):
         t0 = +2.0 * (w * x + y * z)
@@ -507,6 +504,7 @@ class velController(Node):
         self.gpio_client.call_async(gpio_request) 
         #rclpy.spin_until_future_complete(gpio_request, future)
         self.get_logger().info('GPIO Enabled')
+        sleep(5)
 
     def disable_gpio(self):
         self.get_logger().info('Trying to disable gpio')

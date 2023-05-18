@@ -151,6 +151,7 @@ then
   AWS_PATH="/opt/aws/deepracer/lib"
   IMU_PKG="$DEP_PATH/larsll-deepracer-imu-pkg/imu_pkg"
   AWS_DEEPRACER_NAV="$DEP_PATH/aws-deepracer"
+  ROS_NUMPY="$DEP_PATH/ros2_numpy"
 
   #Paths for custom packages
   SSH_DRIVER_PATH="$CUR_PATH/ssh_driver"
@@ -160,7 +161,7 @@ then
   LIDARACQ_PATH="$CUR_PATH/navigation_module/lidar_scan_acq"
   NAVIGATOR_CAR="$CUR_PATH/navigation_module/navigator_car"
   CONTROLLER_PATH="$CUR_PATH/navigation_module/vel_controller"
-  
+  CAM_STREAMER="$CUR_PATH/navigation_module/camera_streamer"
 
   cd $DEP_PATH
 
@@ -194,6 +195,8 @@ then
       fi
       echo "Changing device address to possible new standard"
       sed -i 's/105/104/' $IMU_PATH/config/imu_params.yaml
+      echo "Changing rate to 100"
+      sed -i 's/60/100/' $IMU_PATH/config/imu_params.yam
       echo "Building imu package"
       cd $IMU_PATH && colcon build
     else
@@ -288,6 +291,7 @@ then
     fi
     source $IMU_PKG/install/local_setup.bash
   fi
+
 
   #ssh_driver pkg
   ##########################################################
@@ -390,6 +394,20 @@ then
     fi
     echo "Sourcing navigator_car"
     source $NAVIGATOR_CAR/install/setup.bash
+  fi
+
+  #camera streamer
+  ##########################################################
+  cd $CUR_PATH
+  if [ $bError != 1 ]
+  then
+    if [ ! -d $CAM_STREAMER/build ]
+    then
+      echo "Building camera streamer package"
+      cd $CAM_STREAMER && colcon build
+    fi
+    echo "Sourcing camera_streamer"
+    source $CAM_STREAMER/install/setup.bash
   fi
 
 elif [ $1 = "host" ]

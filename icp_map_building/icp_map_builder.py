@@ -195,7 +195,7 @@ if __name__ == '__main__':
         max_d = np.max([np.max(full_pc_map[:,0]), np.max(full_pc_map[:,1])])
 
         gridSizeMeters = np.ceil(max_d - min_d)
-        res = .1
+        res = .05
 
 
         # Calculate grid size and center location
