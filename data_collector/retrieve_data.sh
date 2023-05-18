@@ -29,5 +29,11 @@ else
   words_num=${#strarr[*]}
   LOCAL_FOLDER=${strarr[${words_num}-1]}
   python3 ${CUR_PATH}/data_collector/data_collector/convert_to_data_list.py ${LOCAL_FOLDER}
+  python3 ${CUR_PATH}/icp_map_building/icp_map_builder.py ${LOCAL_FOLDER}
+  #Now copy the files you've created and to the navigation_module/navigator_host
+  mkdir ${CUR_PATH}/algorithm_data
+  cp ${DATA_PATH}/${LOCAL_FOLDER}/occupancy* ${CUR_PATH}/algorithm_data
+  cp ${DATA_PATH}/${LOCAL_FOLDER}/map_file* ${CUR_PATH}/algorithm_data
+
 fi
 

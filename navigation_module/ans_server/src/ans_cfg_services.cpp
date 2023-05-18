@@ -41,10 +41,10 @@ public:
 
     //Create Occupancy Map Message Publisher
     mMapOccupyPub = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/ans_services/occupancy_map_msg", qos);
-    //occ_timer_ = this->create_wall_timer(1s, std::bind(&ServerNode::load_occupancy_map, this));
+    occ_timer_ = this->create_wall_timer(1s, std::bind(&ServerNode::load_occupancy_map, this));
     
     //Create Goal State Message Publisher
-    mGoalStatePub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/ans_services/goal_state_msg", qos);
+    //mGoalStatePub = this->create_publisher<geometry_msgs::msg::PoseStamped>("/ans_services/goal_state_msg", qos);
     //goal_timer_ = this->create_wall_timer(1s, std::bind(&ServerNode::load_goal_state, this));
     
     
@@ -81,13 +81,13 @@ private:
   
     //Convert input file to Occupancy grid
     nav_msgs::msg::OccupancyGrid occupancy_grid_msg;
-    nav2_map_server::loadMapFromYaml(request->file_path, occupancy_grid_msg);
+    nav2_map_server::loadMapFromYaml(occ_map.c_str(), occupancy_grid_msg);
     occupancy_grid_msg.header.frame_id = "odom";
 
     // Create Publish Occupancy Map
     mMapOccupyPub->publish(occupancy_grid_msg);  
   }
-  
+  /*
   void load_goal_state()
   {
     // Notify users of start of node
@@ -96,18 +96,18 @@ private:
     // Create PoseStamped Msg
     geometry_msgs::msg::PoseStamped pose_msg;
     pose_msg.header.frame_id = "odom";
-    pose_msg.pose.position.x = request->pos_x;
-    pose_msg.pose.position.y = request->pos_y;
-    pose_msg.pose.position.z = request->pos_z;
-    pose_msg.pose.orientation.x = quat.getX();
-    pose_msg.pose.orientation.y = quat.getY();
-    pose_msg.pose.orientation.z = quat.getZ();
-    pose_msg.pose.orientation.w = quat.getW();
+    pose_msg.pose.position.x = goal_state[0]
+    pose_msg.pose.position.y = goal_state[1];
+    pose_msg.pose.position.z =  goal_state[2];
+    pose_msg.pose.orientation.x =  goal_state[3];
+    pose_msg.pose.orientation.y =  goal_state[4];
+    pose_msg.pose.orientation.z =  goal_state[5];
+    pose_msg.pose.orientation.w =  goal_state[6];
 
     // Create Publish Goal State
     mGoalStatePub->publish(pose_msg);  
   }
-  
+  */
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mMapCloudPub;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr mMapOccupyPub;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr mGoalStatePub;

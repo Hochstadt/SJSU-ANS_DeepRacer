@@ -231,7 +231,7 @@ class Localization(Node):
                 self.mSolutionFoundPub.publish(solutionFoundMsg)
 
                 delta_time =  (time.time() - t0)*10**3
-                self.get_logger().info(f'elapsed time: {delta_time} ms')     
+                #self.get_logger().info(f'elapsed time: {delta_time} ms')     
 
 
         def searchForInitialPose(self, Scan, Map, icpType, iterations):
