@@ -167,10 +167,10 @@ class navigatorCar(Node):
                     self.avg_vel = 0.0
                     self.get_logger().info('Out of poses, sort of at the end')
                 else:
-                    if self.waypoint_missed_count < 8:
-                        self.next_pose = self.path.poses[self.path_index].pose
-                        self.next_spose = self.path.poses[self.path_index]
-                        self.path_index-=1
+                    #if self.waypoint_missed_count < 8:
+                    self.next_pose = self.path.poses[self.path_index].pose
+                    self.next_spose = self.path.poses[self.path_index]
+                    self.path_index-=1
         
 
             #update the command            

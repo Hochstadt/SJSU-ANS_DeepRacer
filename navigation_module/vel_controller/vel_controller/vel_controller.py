@@ -26,8 +26,8 @@ from scipy.spatial.transform import Rotation as R
 
 
 class velController(Node):
-    SAMPLE_TIME =.1 
-    THROTTLE_FLOOR = 0.5
+    SAMPLE_TIME =.01 
+    THROTTLE_FLOOR = 0.7
     def __init__(self):
         super().__init__('vel_controller')
 
@@ -188,9 +188,10 @@ class velController(Node):
             rcar = R.from_quat(car_q)
             #Get out DCMs
             Rref_car = rcar.as_matrix()
-            dtime = (datetime.now() - self.prev_time).total_seconds()
+            if self.bHaveData == True:
+                dtime = (datetime.now() - self.prev_time).total_seconds()
 
-            if self.bHaveData == True and self.waypoint_heading != -1 and dtime > 0.3:
+            if self.bHaveData == True and self.waypoint_heading != -1 and dtime > 0.1:
                 
                 self.bHaveData = False
                 
@@ -225,11 +226,13 @@ class velController(Node):
                         self.get_logger().info('Controller output, throttle inc %.4f, rotation %.4f' % (tmpmThrottle, self.mSteering))
                         #self.mThrottle+=tmpmThrottle 
                         servoMsg = ServoCtrlMsg()
+                        self.mThrottle = self.mThrottle + self.THROTTLE_FLOOR
                         if self.mThrottle > 1.0:
                             self.mThrottle = 1.0
-                        elif self.mThrottle < self.THROTTLE_FLOOR:
+                        elif self.mThrottle < 0.0:
                             #Assuming no backwards!
-                            self.mThrottle = float(self.THROTTLE_FLOOR)
+                            #self.mThrottle = float(self.THROTTLE_FLOOR)
+                            self.mThrottle = float(0.0)
                         
                         if self.mSteering > 1.0:
                             self.mSteering = 1.0

@@ -67,12 +67,12 @@ def generate_launch_description():
         executable='vel_controller',
         parameters=[{
                 'bIMU': bIMU,
-                'velKp': 2.3,
-                'velKi': 0.010,
+                'velKp': .3,
+                'velKi': 0.0001,
                 'velKd': 0.001,
-                'rotKp': 0.7,
-                'rotKi': 0.001,
-                'rotKd': 0.0
+                'rotKp': .7,
+                'rotKi': 0.01,
+                'rotKd': 0.009
             }]            
         )
     servo_pkg = Node(
